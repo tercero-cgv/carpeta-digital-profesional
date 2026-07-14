@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Digital Space Roll Book</title>
+
+  <!-- Utilidades de layout escritas a mano en css/styles.css —
+       ya no dependemos del CDN de Tailwind (evita el warning de
+       producción y no añade ningún paso de build). -->
+
+  <!-- Fonts: Space Grotesk (display), Inter (body), JetBrains Mono (data/utility) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body class="min-h-screen overflow-x-hidden">
+
+  <!-- Ambient starfield background, shared by login + dashboard -->
+  <canvas id="starfield"></canvas>
+
+  <!-- ============ LOGIN SCREEN ============ -->
+  <main id="login-screen" class="relative z-10 min-h-screen flex items-center justify-center px-4">
+    <div class="access-panel w-full max-w-sm rounded-2xl p-8">
+
+      <div class="flex flex-col items-center mb-8">
+        <div class="orbit-badge mb-4" aria-hidden="true">
+          <span class="orbit-dot"></span>
+        </div>
+        <h1 class="font-display text-2xl text-center text-slate-100 tracking-tight">Digital Space<br/>Roll Book</h1>
+        <p class="font-mono text-xs text-cyan-300/70 mt-2 tracking-widest uppercase">Acceso restringido &middot; Tripulación autorizada</p>
+      </div>
+
+      <form id="login-form" class="space-y-4" novalidate>
+        <div>
+          <label for="email" class="block font-mono text-xs text-slate-400 mb-1.5 tracking-wide">Correo</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            required
+            autocomplete="username"
+            class="field-input"
+            placeholder="maestro@correo.com"
+          />
+        </div>
+
+        <div>
+          <label for="password" class="block font-mono text-xs text-slate-400 mb-1.5 tracking-wide">Contraseña</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            required
+            autocomplete="current-password"
+            class="field-input"
+            placeholder="••••••••"
+          />
+        </div>
+
+        <p id="login-error" class="hidden text-sm text-amber-400/90 font-medium" role="alert"></p>
+
+        <button type="submit" id="login-btn" class="launch-btn w-full">
+          <span id="login-btn-text">Ingresar a la misión</span>
+          <span id="login-spinner" class="hidden loader-dot-group" aria-hidden="true">
+            <span></span><span></span><span></span>
+          </span>
+        </button>
+      </form>
+
+      <p class="text-center text-xs text-slate-500 mt-6 font-mono">Solo la tripulación autorizada tiene paso.</p>
+    </div>
+  </main>
+
+  <!-- ============ DASHBOARD (hidden until authenticated) ============ -->
+  <div id="dashboard" class="hidden relative z-10 min-h-screen">
+
+    <!-- Sidebar navigation -->
+    <aside class="sidebar">
+      <div class="px-5 pt-6 pb-8">
+        <div class="flex items-center gap-2.5">
+          <div class="orbit-badge orbit-badge-sm" aria-hidden="true"><span class="orbit-dot"></span></div>
+          <span class="font-display text-sm text-slate-100 leading-tight">Digital Space<br/>Roll Book</span>
+        </div>
+      </div>
+
+      <nav class="px-3 space-y-1" aria-label="Navegación principal">
+        <a href="#" class="nav-link nav-link-active" data-section="inicio">
+          <span class="nav-icon">🛰️</span> Portada
+        </a>
+        <a href="#" class="nav-link" data-section="estudiantes">
+          <span class="nav-icon">👨‍🚀</span> Lista de Estudiantes
+        </a>
+        <a href="#" class="nav-link" data-section="asistencia">
+          <span class="nav-icon">🌙</span> Asistencia
+        </a>
+        <a href="#" class="nav-link" data-section="evaluaciones">
+          <span class="nav-icon">🪐</span> Evaluaciones
+        </a>
+        <a href="#" class="nav-link" data-section="perfil">
+          <span class="nav-icon">✨</span> Perfil del Estudiante
+        </a>
+        <a href="#" class="nav-link" data-section="citaciones">
+          <span class="nav-icon">📡</span> Citaciones
+        </a>
+      </nav>
+
+      <div class="mt-auto px-3 pb-6 pt-4">
+        <button id="logout-btn" class="logout-btn w-full">Cerrar sesión</button>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <div class="main-content">
+      <header class="topbar">
+        <div>
+          <p class="font-mono text-xs text-cyan-300/70 tracking-widest uppercase" id="mission-date"></p>
+          <h2 class="font-display text-xl text-slate-100 mt-0.5">Bitácora de misión</h2>
+        </div>
+        <div class="user-chip">
+          <span class="user-chip-dot"></span>
+          <span id="user-email" class="font-mono text-xs text-slate-300"></span>
+        </div>
+      </header>
+
+      <!-- ===== SECCIÓN: Portada ===== -->
+      <section id="section-inicio" class="app-section p-6 md:p-8">
+        <div class="welcome-card">
+          <h3 class="font-display text-2xl text-slate-100 mb-2" id="portada-saludo">Bienvenido/a a bordo 👋</h3>
+          <p class="text-slate-400 max-w-xl leading-relaxed" id="portada-grado"></p>
+          <p class="text-slate-400 max-w-xl leading-relaxed">
+            Este es el centro de mando de tu salón. Las secciones de la izquierda se irán activando
+            módulo por módulo — Asistencia, Evaluaciones, Perfil y Citaciones —
+            a medida que avancemos en el proyecto.
+          </p>
+          <div class="mt-6 flex flex-wrap gap-3">
+            <span class="status-pill">Fase 6 de 6 &middot; Citaciones e Intervenciones</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== SECCIÓN: Registro de la Tripulación (Estudiantes) ===== -->
+      <section id="section-estudiantes" class="app-section hidden p-6 md:p-8">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+          <div>
+            <h3 class="font-display text-2xl text-slate-100">Registro de la Tripulación</h3>
+            <p class="text-slate-400 text-sm mt-1">Única fuente de verdad para asistencia, evaluaciones e intervenciones.</p>
+          </div>
+          <button id="btn-nuevo-tripulante" class="launch-btn w-full md:w-auto px-5">
+            <span>✨ Nuevo Tripulante</span>
+          </button>
+        </div>
+
+        <!-- Buscador -->
+        <div class="search-box mb-5">
+          <span class="search-icon" aria-hidden="true">🔭</span>
+          <input
+            type="text"
+            id="buscador-tripulacion"
+            class="search-input"
+            placeholder="Buscar por nombre o número de estudiante..."
+            autocomplete="off"
+          />
+        </div>
+
+        <!-- Tabla -->
+        <div class="crew-table-wrap">
+          <table class="crew-table">
+            <thead>
+              <tr>
+                <th>Tripulante</th>
+                <th class="hide-sm">ID</th>
+                <th class="hide-sm">Género</th>
+                <th class="hide-md">Notas</th>
+                <th class="text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="crew-table-body">
+              <!-- Filas generadas por JS -->
+            </tbody>
+          </table>
+
+          <div id="crew-empty-state" class="hidden empty-state">
+            <p class="font-display text-lg text-slate-200">Aún no hay tripulantes a bordo 🛰️</p>
+            <p class="text-slate-500 text-sm mt-1">Usa "Nuevo Tripulante" para añadir tu primer estudiante.</p>
+          </div>
+
+          <div id="crew-loading-state" class="empty-state">
+            <p class="text-slate-500 text-sm font-mono">Cargando tripulación...</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== SECCIÓN: Perfil del Estudiante ===== -->
+      <section id="section-perfil" class="app-section hidden p-6 md:p-8">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+          <div>
+            <h3 class="font-display text-2xl text-slate-100">Perfil del Estudiante</h3>
+            <p class="text-slate-400 text-sm mt-1">Fichas de inscripción enviadas por encargados.</p>
+          </div>
+          <button id="btn-activar-kiosco" class="kiosk-launch-btn w-full md:w-auto">
+            🚀 Activar Modo Kiosco <span class="hidden sm:inline">(Llenado de Padres)</span>
+          </button>
+        </div>
+
+        <div class="crew-table-wrap">
+          <table class="crew-table">
+            <thead>
+              <tr>
+                <th>Estudiante</th>
+                <th class="hide-sm">Enviado</th>
+                <th>Estado</th>
+                <th class="text-right">Ver</th>
+              </tr>
+            </thead>
+            <tbody id="perfiles-table-body"></tbody>
+          </table>
+
+          <div id="perfiles-empty-state" class="empty-state">
+            <p class="font-display text-lg text-slate-200">Aún no hay fichas recibidas 📋</p>
+            <p class="text-slate-500 text-sm mt-1">Activa el Modo Kiosco para que los encargados llenen la ficha en la tableta.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== SECCIÓN: Control de Asistencia ===== -->
+      <section id="section-asistencia" class="app-section hidden p-6 md:p-8">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5">
+          <div>
+            <h3 class="font-display text-2xl text-slate-100">Control de Asistencia de la Tripulación</h3>
+            <p class="text-slate-400 text-sm mt-1">Se guarda automáticamente al marcar cada celda — sin botón de "Guardar".</p>
+          </div>
+          <button id="btn-respaldo-json" class="modal-cancel-btn whitespace-nowrap">⬇ Respaldo .json</button>
+        </div>
+
+        <!-- Configuración de Año Escolar (una sola vez) -->
+        <div id="config-ano-escolar" class="ano-escolar-box mb-5 hidden">
+          <label class="field-label">Año escolar</label>
+          <div class="flex items-center gap-2 flex-wrap">
+            <input type="number" id="ano-escolar-inicio" class="field-input ano-input" placeholder="2026" />
+            <span class="text-slate-500">–</span>
+            <span id="ano-escolar-fin" class="text-slate-400 font-mono text-sm">20__</span>
+            <button id="btn-guardar-ano" class="launch-btn px-4">Guardar</button>
+          </div>
+          <p class="text-xs text-slate-500 mt-2">Escribe el año en que <em>comienza</em> el año escolar (ej. 2026 para el año 2026–2027). Solo se pide una vez.</p>
+        </div>
+
+        <div id="ano-escolar-resumen" class="hidden mb-4">
+          <button id="btn-editar-ano" class="text-xs font-mono text-cyan-300/70 hover:text-cyan-300 underline">
+            Año escolar <span id="ano-escolar-label"></span> · editar
+          </button>
+        </div>
+
+        <!-- Pestañas de meses -->
+        <div id="tabs-meses" class="month-tabs mb-5"></div>
+
+        <!-- Leyenda -->
+        <div class="legend-row mb-5">
+          <span class="legend-chip legend-1">1 Presente</span>
+          <span class="legend-chip legend-0">0 Ausente</span>
+          <span class="legend-chip legend-T">T Tardanza</span>
+          <span class="legend-chip legend-J">J Justificada</span>
+          <span class="legend-chip legend-IMP">IMP Imprevisto</span>
+          <span class="legend-chip legend-GO">GO Gestión Oficial (todo el grupo)</span>
+          <span class="legend-chip legend-NC">NC No hubo clase (todo el grupo)</span>
+        </div>
+
+        <!-- Grid de asistencia (mes) -->
+        <div id="grid-mes-wrap" class="attendance-grid-wrap"></div>
+
+        <!-- Vista de Bitácora Anual -->
+        <div id="vista-anual" class="hidden attendance-grid-wrap"></div>
+      </section>
+
+      <!-- ===== SECCIÓN: Evaluaciones y Tabulación ===== -->
+      <section id="section-evaluaciones" class="app-section hidden p-6 md:p-8">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5">
+          <div>
+            <h3 class="font-display text-2xl text-slate-100">Evaluaciones y Tabulación Automática</h3>
+            <p class="text-slate-400 text-sm mt-1">Desglosa por partes, calcula el total, y envíalo a BigDreamers.</p>
+          </div>
+          <button id="btn-nuevo-instrumento" class="launch-btn w-full md:w-auto px-5">✨ Nuevo Instrumento</button>
+        </div>
+
+        <!-- Pestañas de materia -->
+        <div class="month-tabs mb-5" id="tabs-materia">
+          <button class="month-tab month-tab-active" data-materia="ADL">Adquisición de la Lengua</button>
+          <button class="month-tab" data-materia="Matematica">Matemática</button>
+          <button class="month-tab" data-materia="Ciencia">Ciencia</button>
+        </div>
+
+        <!-- Lista de instrumentos de la materia activa -->
+        <div class="crew-table-wrap mb-5">
+          <table class="crew-table">
+            <thead>
+              <tr>
+                <th>Instrumento</th>
+                <th class="hide-sm">Semanas</th>
+                <th class="hide-sm">Fecha</th>
+                <th>Puntos posibles</th>
+                <th class="text-right">Ver</th>
+              </tr>
+            </thead>
+            <tbody id="instrumentos-table-body"></tbody>
+          </table>
+          <div id="instrumentos-empty-state" class="empty-state">
+            <p class="font-display text-lg text-slate-200">Sin instrumentos todavía 📋</p>
+            <p class="text-slate-500 text-sm mt-1">Usa "Nuevo Instrumento" para crear la primera tabulación.</p>
+          </div>
+        </div>
+
+        <!-- Tabulación del instrumento seleccionado -->
+        <div id="tabulacion-wrap" class="hidden attendance-grid-wrap"></div>
+      </section>
+
+      <!-- ===== SECCIÓN: Citaciones e Intervenciones ===== -->
+      <section id="section-citaciones" class="app-section hidden p-6 md:p-8">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5">
+          <div>
+            <h3 class="font-display text-2xl text-slate-100">Citaciones e Intervenciones</h3>
+            <p class="text-slate-400 text-sm mt-1">Siempre atadas al estudiante. Se pueden imprimir o guardar como PDF.</p>
+          </div>
+        </div>
+
+        <!-- Config de escuela (una sola vez) -->
+        <div id="config-escuela" class="ano-escolar-box mb-5 hidden">
+          <label class="field-label">Datos de la escuela (se usan en las citaciones impresas)</label>
+          <div class="ficha-grid-2 mt-2">
+            <div><label class="field-label">Institución</label><input type="text" id="esc-institucion" class="field-input" placeholder="Escuela Celso González Vaillant" /></div>
+            <div><label class="field-label">Grado / Grupo</label><input type="text" id="esc-grado" class="field-input" placeholder="Tercer Grado" /></div>
+            <div><label class="field-label">Dirección</label><input type="text" id="esc-direccion" class="field-input" /></div>
+            <div><label class="field-label">Teléfono de la escuela</label><input type="tel" id="esc-telefono" class="field-input" /></div>
+            <div><label class="field-label">Tu nombre (citación realizada por)</label><input type="text" id="esc-maestro-nombre" class="field-input" /></div>
+            <div><label class="field-label">Tu cargo</label><input type="text" id="esc-maestro-cargo" class="field-input" placeholder="Maestro/a de Tercer Grado" /></div>
+          </div>
+          <button id="btn-guardar-escuela" class="launch-btn px-4 mt-3">Guardar</button>
+        </div>
+        <div id="escuela-resumen" class="hidden mb-4">
+          <button id="btn-editar-escuela" class="text-xs font-mono text-cyan-300/70 hover:text-cyan-300 underline">Datos de la escuela · editar</button>
+        </div>
+
+        <!-- Pestañas Citaciones / Intervenciones -->
+        <div class="month-tabs mb-5" id="tabs-cit-int">
+          <button class="month-tab month-tab-active" data-tipo="citaciones">📋 Citaciones de Padres</button>
+          <button class="month-tab" data-tipo="intervenciones">🗒️ Intervenciones con Estudiantes</button>
+        </div>
+
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-5">
+          <select id="filtro-estudiante-cit" class="field-input" style="max-width:20rem">
+            <option value="">— Ver todos los estudiantes —</option>
+          </select>
+          <button id="btn-nuevo-registro-cit" class="launch-btn w-full md:w-auto px-5">+ Nuevo Registro</button>
+        </div>
+
+        <div class="crew-table-wrap">
+          <table class="crew-table">
+            <thead id="cit-int-thead"></thead>
+            <tbody id="cit-int-body"></tbody>
+          </table>
+          <div id="cit-int-empty" class="empty-state">
+            <p class="font-display text-lg text-slate-200">Sin registros todavía 🗂️</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- ===== MODAL: Nueva Citación ===== -->
+  <div id="modal-citacion" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-panel">
+      <div class="flex items-center justify-between mb-5">
+        <h4 class="font-display text-lg text-slate-100">📋 Nueva Citación de Padres</h4>
+        <button id="modal-citacion-close-btn" class="modal-close-btn" aria-label="Cerrar">✕</button>
+      </div>
+      <form id="form-citacion" class="space-y-4" novalidate>
+        <fieldset class="ficha-fieldset">
+          <legend>Estudiante</legend>
+          <select id="cit-estudiante" class="field-input" required>
+            <option value="" disabled selected>Selecciona el estudiante...</option>
+          </select>
+        </fieldset>
+
+        <fieldset class="ficha-fieldset">
+          <legend>Detalles de la citación</legend>
+          <div class="ficha-grid-3">
+            <div><label class="field-label">Fecha</label><input type="date" id="cit-fecha" class="field-input" required /></div>
+            <div><label class="field-label">Hora</label><input type="time" id="cit-hora" class="field-input" required /></div>
+            <div><label class="field-label">Lugar</label><input type="text" id="cit-lugar" class="field-input" placeholder="Salón / Oficina" /></div>
+          </div>
+        </fieldset>
+
+        <fieldset class="ficha-fieldset">
+          <legend>Padre / Madre / Encargado</legend>
+          <div class="ficha-grid-3">
+            <div><label class="field-label">Nombre</label><input type="text" id="cit-encargado-nombre" class="field-input" required /></div>
+            <div><label class="field-label">Teléfono</label><input type="tel" id="cit-encargado-telefono" class="field-input" required /></div>
+            <div><label class="field-label">Correo (opcional)</label><input type="email" id="cit-encargado-correo" class="field-input" /></div>
+          </div>
+        </fieldset>
+
+        <fieldset class="ficha-fieldset">
+          <legend>Motivo de la citación</legend>
+          <div class="ficha-checkbox-row">
+            <label class="ficha-checkbox"><input type="checkbox" name="cit-motivo" value="Rendimiento académico" /> Rendimiento académico</label>
+            <label class="ficha-checkbox"><input type="checkbox" name="cit-motivo" value="Entrega de informes" /> Entrega de informes</label>
+            <label class="ficha-checkbox"><input type="checkbox" name="cit-motivo" value="Orientación" /> Orientación</label>
+            <label class="ficha-checkbox"><input type="checkbox" name="cit-motivo" value="Comportamiento / Disciplina" /> Comportamiento / Disciplina</label>
+            <label class="ficha-checkbox"><input type="checkbox" name="cit-motivo" value="Situación personal / Familiar" /> Situación personal / Familiar</label>
+            <label class="ficha-checkbox"><input type="checkbox" name="cit-motivo" value="Inasistencias / Puntualidad" /> Inasistencias / Puntualidad</label>
+            <label class="ficha-checkbox"><input type="checkbox" name="cit-motivo" value="Actividades escolares" /> Actividades escolares</label>
+          </div>
+          <div class="mt-3">
+            <label class="field-label">Otro (especificar)</label>
+            <input type="text" id="cit-motivo-otro" class="field-input" />
+          </div>
+        </fieldset>
+
+        <fieldset class="ficha-fieldset">
+          <legend>Observaciones / Detalles</legend>
+          <textarea id="cit-observaciones" class="field-input" rows="3"></textarea>
+        </fieldset>
+
+        <p id="citacion-form-error" class="hidden text-sm text-amber-400/90 font-medium" role="alert"></p>
+        <div class="flex gap-3 pt-2">
+          <button type="button" id="modal-citacion-cancel-btn" class="modal-cancel-btn flex-1">Cancelar</button>
+          <button type="submit" class="launch-btn flex-1">Guardar Citación</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===== MODAL: Nueva Intervención ===== -->
+  <div id="modal-intervencion" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-panel">
+      <div class="flex items-center justify-between mb-5">
+        <h4 class="font-display text-lg text-slate-100">🗒️ Nueva Intervención con Estudiante</h4>
+        <button id="modal-intervencion-close-btn" class="modal-close-btn" aria-label="Cerrar">✕</button>
+      </div>
+      <form id="form-intervencion" class="space-y-4" novalidate>
+        <fieldset class="ficha-fieldset">
+          <legend>Estudiante</legend>
+          <select id="int-estudiante" class="field-input" required>
+            <option value="" disabled selected>Selecciona el estudiante...</option>
+          </select>
+        </fieldset>
+        <fieldset class="ficha-fieldset">
+          <legend>Contacto</legend>
+          <div class="ficha-grid-3">
+            <div><label class="field-label">Nombre de contacto</label><input type="text" id="int-contacto" class="field-input" required /></div>
+            <div><label class="field-label">Fecha</label><input type="date" id="int-fecha" class="field-input" required /></div>
+            <div><label class="field-label">Hora</label><input type="time" id="int-hora" class="field-input" required /></div>
+          </div>
+        </fieldset>
+        <fieldset class="ficha-fieldset">
+          <legend>Método de contacto</legend>
+          <div class="ficha-checkbox-row">
+            <label class="ficha-checkbox"><input type="checkbox" name="int-metodo" value="Teléfono" /> Teléfono</label>
+            <label class="ficha-checkbox"><input type="checkbox" name="int-metodo" value="Correo electrónico" /> Correo electrónico</label>
+            <label class="ficha-checkbox"><input type="checkbox" name="int-metodo" value="Nota" /> Nota</label>
+            <label class="ficha-checkbox"><input type="checkbox" name="int-metodo" value="En persona" /> En persona</label>
+          </div>
+        </fieldset>
+        <fieldset class="ficha-fieldset">
+          <legend>Razón para contactar</legend>
+          <textarea id="int-razon" class="field-input" rows="2"></textarea>
+        </fieldset>
+        <fieldset class="ficha-fieldset">
+          <legend>Notas</legend>
+          <textarea id="int-notas" class="field-input" rows="3"></textarea>
+        </fieldset>
+        <p id="intervencion-form-error" class="hidden text-sm text-amber-400/90 font-medium" role="alert"></p>
+        <div class="flex gap-3 pt-2">
+          <button type="button" id="modal-intervencion-cancel-btn" class="modal-cancel-btn flex-1">Cancelar</button>
+          <button type="submit" class="launch-btn flex-1">Guardar Intervención</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===== ÁREA DE IMPRESIÓN (oculta en pantalla, visible solo al imprimir) ===== -->
+  <div id="print-area"></div>
+
+  <!-- ===== MODAL: Nuevo Instrumento ===== -->
+  <div id="modal-instrumento" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="instrumento-modal-title">
+    <div class="modal-panel">
+      <div class="flex items-center justify-between mb-5">
+        <h4 id="instrumento-modal-title" class="font-display text-lg text-slate-100">Nuevo Instrumento</h4>
+        <button id="modal-instrumento-close-btn" class="modal-close-btn" aria-label="Cerrar">✕</button>
+      </div>
+      <form id="form-instrumento" class="space-y-4" novalidate>
+        <div>
+          <label class="field-label">Tipo de instrumento</label>
+          <select id="inst-tipo" class="field-input" required>
+            <option value="Dictado">Dictado</option>
+            <option value="Proyecto">Proyecto</option>
+            <option value="Assessment">Assessment</option>
+            <option value="Examen">Examen</option>
+            <option value="STEM">STEM</option>
+            <option value="Trabajo Especial">Trabajo Especial</option>
+            <option value="Prueba Corta">Prueba corta</option>
+            <option value="Tarea Desempeño">Tarea de desempeño</option>
+            <option value="Otro">Otro</option>
+          </select>
+        </div>
+        <div>
+          <label class="field-label">Tema / Nombre del instrumento</label>
+          <input type="text" id="inst-tema" class="field-input" required placeholder="Ej. Fracciones — Prueba corta" />
+        </div>
+        <div class="ficha-grid-2">
+          <div>
+            <label class="field-label">Fecha</label>
+            <input type="date" id="inst-fecha" class="field-input" required />
+          </div>
+          <div>
+            <label class="field-label">Semanas</label>
+            <div class="ficha-radio-row">
+              <label class="ficha-radio"><input type="radio" name="inst-semana" value="10" required /> 10</label>
+              <label class="ficha-radio"><input type="radio" name="inst-semana" value="20" /> 20</label>
+              <label class="ficha-radio"><input type="radio" name="inst-semana" value="30" /> 30</label>
+              <label class="ficha-radio"><input type="radio" name="inst-semana" value="40" /> 40</label>
+            </div>
+          </div>
+        </div>
+        <p id="instrumento-form-error" class="hidden text-sm text-amber-400/90 font-medium" role="alert"></p>
+        <div class="flex gap-3 pt-2">
+          <button type="button" id="modal-instrumento-cancel-btn" class="modal-cancel-btn flex-1">Cancelar</button>
+          <button type="submit" class="launch-btn flex-1">Crear Instrumento</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===== MODAL: Enviar a BigDreamers ===== -->
+  <div id="modal-bigdreamers" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="bd-modal-title">
+    <div class="modal-panel">
+      <div class="flex items-center justify-between mb-5">
+        <h4 id="bd-modal-title" class="font-display text-lg text-slate-100">⭐ Enviar a BigDreamers</h4>
+        <button id="modal-bd-close-btn" class="modal-close-btn" aria-label="Cerrar">✕</button>
+      </div>
+      <p class="text-slate-400 text-sm mb-4">Se enviará el total calculado de cada estudiante como un instrumento nuevo en BigDreamers.</p>
+      <div id="bd-preview-rows" class="mb-4"></div>
+      <p id="bd-form-error" class="hidden text-sm text-amber-400/90 font-medium mb-3" role="alert"></p>
+      <p id="bd-unmatched-warning" class="hidden text-sm text-amber-400/90 mb-3"></p>
+      <div class="flex gap-3">
+        <button type="button" id="modal-bd-cancel-btn" class="modal-cancel-btn flex-1">Cancelar</button>
+        <button type="button" id="modal-bd-confirm-btn" class="launch-btn flex-1">⭐ Enviar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODO KIOSCO: overlay de pantalla completa para padres ===== -->
+  <div id="kiosk-overlay" class="kiosk-overlay hidden">
+
+    <!-- Botón discreto de salida, esquina superior -->
+    <button id="kiosk-exit-btn" class="kiosk-exit-btn" aria-label="Salir del modo kiosco">⚙</button>
+
+    <!-- Vista de formulario -->
+    <div id="kiosk-form-view" class="kiosk-scroll">
+      <div class="kiosk-form-card">
+        <div class="text-center mb-6">
+          <h2 class="font-display text-2xl text-slate-100">Ficha de Inscripción del Tripulante</h2>
+          <p class="text-slate-400 text-sm mt-1">Por favor completa todos los campos. Tu información queda protegida.</p>
+        </div>
+
+        <form id="form-ficha-padres" class="space-y-8" novalidate autocomplete="off">
+
+          <input type="hidden" id="ficha-estudiante-id" required />
+
+          <!-- 0. Selección de estudiante -->
+          <fieldset class="ficha-fieldset">
+            <legend>¿Para cuál estudiante es esta ficha?</legend>
+            <select id="ficha-select-estudiante" class="field-input" required>
+              <option value="" disabled selected>Selecciona el nombre...</option>
+            </select>
+          </fieldset>
+
+          <!-- 1. Datos del estudiante -->
+          <fieldset class="ficha-fieldset">
+            <legend>Datos del Estudiante</legend>
+            <div class="ficha-grid-4">
+              <div><label class="field-label">Nombre</label><input type="text" id="est-nombre" class="field-input" required /></div>
+              <div><label class="field-label">Inicial</label><input type="text" maxlength="2" id="est-inicial" class="field-input" /></div>
+              <div><label class="field-label">Apellido Paterno</label><input type="text" id="est-apellido-paterno" class="field-input" required /></div>
+              <div><label class="field-label">Apellido Materno</label><input type="text" id="est-apellido-materno" class="field-input" /></div>
+            </div>
+            <div class="ficha-grid-4 mt-4">
+              <div><label class="field-label">Día de nacimiento</label><input type="number" min="1" max="31" id="est-nac-dia" class="field-input" required /></div>
+              <div><label class="field-label">Mes de nacimiento</label><input type="number" min="1" max="12" id="est-nac-mes" class="field-input" required /></div>
+              <div><label class="field-label">Año de nacimiento</label><input type="number" min="1990" max="2030" id="est-nac-ano" class="field-input" required /></div>
+              <div><label class="field-label">Edad</label><input type="number" min="0" max="18" id="est-edad" class="field-input" required /></div>
+            </div>
+            <div class="mt-4">
+              <label class="field-label">Dirección residencial/postal</label>
+              <textarea id="est-direccion" class="field-input" rows="2" required></textarea>
+            </div>
+            <div class="mt-4 max-w-xs">
+              <label class="field-label">Teléfono celular</label>
+              <input type="tel" id="est-telefono" class="field-input" required />
+            </div>
+          </fieldset>
+
+          <!-- 2. Datos de encargados -->
+          <fieldset class="ficha-fieldset">
+            <legend>Madre / Encargada</legend>
+            <div class="ficha-grid-2">
+              <div><label class="field-label">Nombre</label><input type="text" id="madre-nombre" class="field-input" /></div>
+              <div><label class="field-label">Ocupación</label><input type="text" id="madre-ocupacion" class="field-input" /></div>
+              <div><label class="field-label">Lugar de trabajo</label><input type="text" id="madre-trabajo" class="field-input" /></div>
+              <div><label class="field-label">Teléfono del trabajo</label><input type="tel" id="madre-tel-trabajo" class="field-input" /></div>
+            </div>
+          </fieldset>
+
+          <fieldset class="ficha-fieldset">
+            <legend>Padre / Encargado</legend>
+            <div class="ficha-grid-2">
+              <div><label class="field-label">Nombre</label><input type="text" id="padre-nombre" class="field-input" /></div>
+              <div><label class="field-label">Ocupación</label><input type="text" id="padre-ocupacion" class="field-input" /></div>
+              <div><label class="field-label">Lugar de trabajo</label><input type="text" id="padre-trabajo" class="field-input" /></div>
+              <div><label class="field-label">Teléfono del trabajo</label><input type="tel" id="padre-tel-trabajo" class="field-input" /></div>
+            </div>
+          </fieldset>
+
+          <fieldset class="ficha-fieldset">
+            <legend>El estudiante vive con</legend>
+            <div class="ficha-radio-row" id="grupo-vive-con">
+              <label class="ficha-radio"><input type="radio" name="vive-con" value="Ambos padres" required /> Ambos padres</label>
+              <label class="ficha-radio"><input type="radio" name="vive-con" value="Madre" /> Madre</label>
+              <label class="ficha-radio"><input type="radio" name="vive-con" value="Padre" /> Padre</label>
+              <label class="ficha-radio"><input type="radio" name="vive-con" value="Encargado" /> Encargado</label>
+            </div>
+          </fieldset>
+
+          <!-- 3. Entorno y conectividad -->
+          <fieldset class="ficha-fieldset">
+            <legend>Entorno y Conectividad</legend>
+            <div class="ficha-grid-2">
+              <div>
+                <label class="field-label">¿Posee computadora en el hogar?</label>
+                <div class="ficha-radio-row">
+                  <label class="ficha-radio"><input type="radio" name="tiene-computadora" value="Si" required /> Sí</label>
+                  <label class="ficha-radio"><input type="radio" name="tiene-computadora" value="No" /> No</label>
+                </div>
+              </div>
+              <div>
+                <label class="field-label">¿Tiene acceso a internet?</label>
+                <div class="ficha-radio-row">
+                  <label class="ficha-radio"><input type="radio" name="tiene-internet" value="Si" required /> Sí</label>
+                  <label class="ficha-radio"><input type="radio" name="tiene-internet" value="No" /> No</label>
+                </div>
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- 4. Historial académico y servicios -->
+          <fieldset class="ficha-fieldset">
+            <legend>Historial Académico y Servicios</legend>
+            <div class="ficha-grid-2">
+              <div>
+                <label class="field-label">¿Está repitiendo el grado actual?</label>
+                <div class="ficha-radio-row">
+                  <label class="ficha-radio"><input type="radio" name="repite-grado" value="Si" required /> Sí</label>
+                  <label class="ficha-radio"><input type="radio" name="repite-grado" value="No" /> No</label>
+                </div>
+              </div>
+              <div>
+                <label class="field-label">¿Ha repetido un grado anteriormente?</label>
+                <div class="ficha-radio-row">
+                  <label class="ficha-radio"><input type="radio" name="repitio-antes" value="Si" required /> Sí</label>
+                  <label class="ficha-radio"><input type="radio" name="repitio-antes" value="No" /> No</label>
+                </div>
+              </div>
+            </div>
+            <div class="mt-4">
+              <label class="field-label">¿Pertenece al programa de Educación Especial?</label>
+              <div class="ficha-radio-row">
+                <label class="ficha-radio"><input type="radio" name="educ-especial" value="Si" required /> Sí</label>
+                <label class="ficha-radio"><input type="radio" name="educ-especial" value="No" /> No</label>
+              </div>
+              <div id="grupo-terapias" class="hidden mt-3 ficha-checkbox-row">
+                <label class="ficha-checkbox"><input type="checkbox" name="terapia" value="Terapia del habla" /> Terapia del habla</label>
+                <label class="ficha-checkbox"><input type="checkbox" name="terapia" value="Terapia ocupacional" /> Terapia ocupacional</label>
+                <label class="ficha-checkbox"><input type="checkbox" name="terapia" value="Psicológica" /> Psicológica</label>
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- 5. Salud y emergencias -->
+          <fieldset class="ficha-fieldset">
+            <legend>Salud y Emergencias</legend>
+            <div>
+              <label class="field-label">¿Padece de alguna enfermedad? Especifica</label>
+              <textarea id="salud-enfermedad" class="field-input" rows="2" placeholder="Escribe 'Ninguna' si no aplica"></textarea>
+            </div>
+            <div class="mt-4">
+              <label class="field-label">¿Utiliza medicamentos para tratarla?</label>
+              <div class="ficha-radio-row">
+                <label class="ficha-radio"><input type="radio" name="usa-medicamentos" value="Si" required /> Sí</label>
+                <label class="ficha-radio"><input type="radio" name="usa-medicamentos" value="No" /> No</label>
+              </div>
+            </div>
+
+            <div class="ficha-grid-3 mt-5">
+              <div><label class="field-label">Contacto de Emergencia — Nombre</label><input type="text" id="emerg-nombre" class="field-input" required /></div>
+              <div><label class="field-label">Parentesco</label><input type="text" id="emerg-parentesco" class="field-input" required /></div>
+              <div><label class="field-label">Teléfono(s)</label><input type="tel" id="emerg-telefono" class="field-input" required /></div>
+            </div>
+
+            <div class="autorizacion-box mt-5">
+              <p class="text-sm text-slate-300 leading-relaxed">
+                Yo, <input type="text" id="autoriza-encargado" class="inline-field" placeholder="nombre del encargado" required />,
+                autorizo a <input type="text" id="autoriza-contacto" class="inline-field" placeholder="nombre de contacto" required />
+                a presentarse en la escuela en caso de emergencia y tomar decisiones en mi representación mientras se me localiza.
+              </p>
+            </div>
+
+            <div class="mt-5">
+              <label class="field-label">Firma digital del encargado</label>
+              <div class="signature-wrap">
+                <canvas id="firma-canvas" class="signature-canvas"></canvas>
+                <button type="button" id="firma-limpiar-btn" class="signature-clear-btn">Borrar firma</button>
+              </div>
+              <p class="text-xs text-slate-500 mt-1 font-mono" id="firma-fecha"></p>
+            </div>
+
+            <div class="mt-5">
+              <label class="field-label">Personas NO autorizadas a visitar el plantel o retirar al menor</label>
+              <textarea id="salud-no-autorizados" class="field-input" rows="2" placeholder="Escribe 'Ninguna' si no aplica"></textarea>
+            </div>
+          </fieldset>
+
+          <p id="ficha-form-error" class="hidden text-sm text-amber-400/90 font-medium" role="alert"></p>
+
+          <button type="submit" id="ficha-submit-btn" class="launch-btn w-full">
+            <span id="ficha-submit-text">Enviar Formulario</span>
+            <span id="ficha-submit-spinner" class="hidden loader-dot-group" aria-hidden="true">
+              <span></span><span></span><span></span>
+            </span>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Vista de éxito -->
+    <div id="kiosk-success-view" class="kiosk-success-view hidden">
+      <div class="text-center">
+        <div class="text-6xl mb-4">🛰️</div>
+        <h2 class="font-display text-2xl text-slate-100 mb-2">¡Misión cumplida!</h2>
+        <p class="text-slate-400">Tu tripulante ha sido registrado.</p>
+        <p class="text-slate-500 text-sm mt-6 font-mono">Preparando la siguiente ficha...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL: Confirmación para salir del Modo Kiosco ===== -->
+  <div id="modal-salir-kiosco" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="salir-kiosco-title">
+    <div class="modal-panel modal-panel-sm">
+      <h4 id="salir-kiosco-title" class="font-display text-lg text-slate-100 mb-2">Salir del Modo Kiosco</h4>
+      <p class="text-slate-400 text-sm mb-4">
+        Esta pantalla vuelve a mostrar los datos de todos los estudiantes. Confirma con tu contraseña de maestro/a.
+      </p>
+      <input type="password" id="salir-kiosco-password" class="field-input mb-2" placeholder="Tu contraseña" autocomplete="current-password" />
+      <p id="salir-kiosco-error" class="hidden text-sm text-amber-400/90 font-medium mb-2" role="alert"></p>
+      <div class="flex gap-3 mt-3">
+        <button type="button" id="salir-kiosco-cancel-btn" class="modal-cancel-btn flex-1">Cancelar</button>
+        <button type="button" id="salir-kiosco-confirm-btn" class="launch-btn flex-1">Confirmar y Salir</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL: Nuevo / Editar Tripulante ===== -->
+  <div id="modal-tripulante" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-panel">
+      <div class="flex items-center justify-between mb-5">
+        <h4 id="modal-title" class="font-display text-lg text-slate-100">Nuevo Tripulante</h4>
+        <button id="modal-close-btn" class="modal-close-btn" aria-label="Cerrar">✕</button>
+      </div>
+
+      <form id="form-tripulante" class="space-y-4" novalidate>
+        <input type="hidden" id="tripulante-id" value="" />
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label for="tripulante-nombre" class="field-label">Nombre</label>
+            <input type="text" id="tripulante-nombre" class="field-input" required autocomplete="off" />
+          </div>
+          <div>
+            <label for="tripulante-apellidos" class="field-label">Apellidos</label>
+            <input type="text" id="tripulante-apellidos" class="field-input" required autocomplete="off" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label for="tripulante-numero" class="field-label">Número de Estudiante / ID</label>
+            <input type="text" id="tripulante-numero" class="field-input" required autocomplete="off" />
+          </div>
+          <div>
+            <label for="tripulante-genero" class="field-label">Género</label>
+            <select id="tripulante-genero" class="field-input" required>
+              <option value="" disabled selected>Selecciona...</option>
+              <option value="F">Femenino</option>
+              <option value="M">Masculino</option>
+              <option value="Otro">Otro / Prefiere no decir</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label for="tripulante-notas" class="field-label">Notas Iniciales</label>
+          <textarea id="tripulante-notas" class="field-input" rows="3" placeholder="Opcional"></textarea>
+        </div>
+
+        <p id="tripulante-form-error" class="hidden text-sm text-amber-400/90 font-medium" role="alert"></p>
+
+        <div class="flex gap-3 pt-2">
+          <button type="button" id="modal-cancel-btn" class="modal-cancel-btn flex-1">Cancelar</button>
+          <button type="submit" id="modal-submit-btn" class="launch-btn flex-1">
+            <span id="modal-submit-text">Guardar</span>
+            <span id="modal-submit-spinner" class="hidden loader-dot-group" aria-hidden="true">
+              <span></span><span></span><span></span>
+            </span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===== MODAL: Confirmar baja ===== -->
+  <div id="modal-confirmar-baja" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="baja-title">
+    <div class="modal-panel modal-panel-sm">
+      <h4 id="baja-title" class="font-display text-lg text-slate-100 mb-2">¿Dar de baja a este tripulante?</h4>
+      <p class="text-slate-400 text-sm mb-6">
+        <span id="baja-nombre-tripulante" class="text-slate-200 font-medium"></span> se marcará como inactivo.
+        Su historial de asistencia y evaluaciones se conserva — no se elimina nada permanentemente.
+      </p>
+      <div class="flex gap-3">
+        <button type="button" id="baja-cancel-btn" class="modal-cancel-btn flex-1">Cancelar</button>
+        <button type="button" id="baja-confirm-btn" class="danger-btn flex-1">Sí, dar de baja</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK (modular, v10) -->
+  <script type="module" src="js/firebase-config.js"></script>
+  <script type="module" src="js/auth.js"></script>
+  <script type="module" src="js/portada-ui.js"></script>
+  <script type="module" src="js/estudiantes-data.js"></script>
+  <script type="module" src="js/tripulacion-ui.js"></script>
+  <script type="module" src="js/perfiles-data.js"></script>
+  <script type="module" src="js/kiosk-ui.js"></script>
+  <script type="module" src="js/asistencia-data.js"></script>
+  <script type="module" src="js/asistencia-ui.js"></script>
+  <script type="module" src="js/bigdreamers-bridge.js"></script>
+  <script type="module" src="js/evaluaciones-data.js"></script>
+  <script type="module" src="js/evaluaciones-ui.js"></script>
+  <script type="module" src="js/citaciones-data.js"></script>
+  <script type="module" src="js/citaciones-ui.js"></script>
+  <script type="module" src="js/app.js"></script>
+  <script src="js/starfield.js"></script>
+</body>
+</html>
