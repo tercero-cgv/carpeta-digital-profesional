@@ -74,6 +74,54 @@ export async function resolverBigDreamersId(estudianteRollBook, rosterBigDreamer
 }
 
 /**
+ * Lista los instrumentos que YA existen en BigDreamers para una materia,
+ * para poblar el selector de "agregar a instrumento existente".
+ */
+export async function obtenerInstrumentosBigDreamers(materiaBD) {
+  const materiaDocRef = doc(bdDb, "bigdreamers", `materia_${materiaBD}`);
+  const snap = await getDoc(materiaDocRef);
+  return snap.exists() ? snap.data().instrumentos || [] : [];
+}
+
+/**
+ * Envía puntuaciones a un instrumento que YA EXISTE en BigDreamers
+ * (en vez de crear uno nuevo) — mismo emparejamiento seguro por id
+ * persistente que la versión "instrumento nuevo".
+ */
+export async function enviarAInstrumentoExistenteBigDreamers({
+  materiaBD,
+  instrumentoIdBD,
+  puntuacionesPorEstudianteId,
+  estudiantesRollBook
+}) {
+  const rosterBigDreamers = await obtenerRosterBigDreamers();
+  const materiaDocRef = doc(bdDb, "bigdreamers", `materia_${materiaBD}`);
+  const materiaSnap = await getDoc(materiaDocRef);
+  const materiaData = materiaSnap.exists()
+    ? { instrumentos: materiaSnap.data().instrumentos || [], puntuaciones: materiaSnap.data().puntuaciones || {} }
+    : { instrumentos: [], puntuaciones: {} };
+
+  let enviados = 0;
+  const sinCoincidencia = [];
+
+  for (const [estudianteId, puntos] of Object.entries(puntuacionesPorEstudianteId)) {
+    const estudiante = estudiantesRollBook.find((e) => e.id === estudianteId);
+    if (!estudiante) continue;
+    const bdId = await resolverBigDreamersId(estudiante, rosterBigDreamers);
+    if (!bdId) {
+      sinCoincidencia.push(estudiante.nombreCompleto);
+      continue;
+    }
+    if (!materiaData.puntuaciones[bdId]) materiaData.puntuaciones[bdId] = {};
+    materiaData.puntuaciones[bdId][instrumentoIdBD] = puntos;
+    enviados++;
+  }
+
+  await setDoc(materiaDocRef, materiaData);
+  return { enviados, sinCoincidencia };
+}
+
+/**
  * Envía el total calculado de un instrumento a BigDreamers, como
  * instrumento NUEVO en la materia indicada. Mismo formato exacto
  * que `sendToBD()` en DreamQuiz: instrumentos:[{id,tipo,tema,fecha,valor}],

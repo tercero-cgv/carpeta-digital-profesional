@@ -4,7 +4,7 @@
 // ============================================================
 import { obtenerListaTripulacion, obtenerRosterCompleto } from "./estudiantes-data.js";
 import { escucharInstrumentos, crearInstrumento, agregarParte, marcarPuntuacion } from "./evaluaciones-data.js";
-import { enviarInstrumentoNuevoABigDreamers } from "./bigdreamers-bridge.js";
+import { enviarInstrumentoNuevoABigDreamers, enviarAInstrumentoExistenteBigDreamers, obtenerInstrumentosBigDreamers } from "./bigdreamers-bridge.js";
 
 // El tipo de instrumento de Roll Book es más amplio que el de
 // BigDreamers (que solo tiene 6 opciones). Los que no tienen
@@ -225,6 +225,10 @@ function abrirModalBD(inst) {
   bdError.classList.add("hidden");
   bdWarning.classList.add("hidden");
 
+  // Reset del selector de modo cada vez que se abre
+  document.querySelector('input[name="bd-modo"][value="nuevo"]').checked = true;
+  document.getElementById("bd-select-existente-wrap").classList.add("hidden");
+
   const filas = cacheEstudiantes
     .map((est) => {
       const { total, puntosPosibles } = calcularTotal(inst, est.id);
@@ -237,31 +241,64 @@ function abrirModalBD(inst) {
   bdPreviewRows.innerHTML = filas;
   modalBD.classList.remove("hidden");
 
+  document.querySelectorAll('input[name="bd-modo"]').forEach((radio) => {
+    radio.onchange = async () => {
+      const esExistente = radio.value === "existente" && radio.checked;
+      document.getElementById("bd-select-existente-wrap").classList.toggle("hidden", !esExistente);
+      if (esExistente) {
+        const selectEl = document.getElementById("bd-select-existente");
+        selectEl.innerHTML = `<option value="">Cargando...</option>`;
+        const instrumentosBD = await obtenerInstrumentosBigDreamers(materiaActiva);
+        selectEl.innerHTML = instrumentosBD.length
+          ? instrumentosBD.map((i) => `<option value="${i.id}">${escapeHtml(i.tipo)} — ${escapeHtml(i.tema)} (${i.valor} pts)</option>`).join("")
+          : `<option value="">— No hay instrumentos todavía en esta materia —</option>`;
+      }
+    };
+  });
+
   document.getElementById("modal-bd-confirm-btn").onclick = async () => {
     const puntuaciones = {};
     cacheEstudiantes.forEach((est) => {
       const { total } = calcularTotal(inst, est.id);
       puntuaciones[est.id] = total;
     });
-    const puntosPosibles = (inst.partes || []).reduce((s, p) => s + Number(p.puntosPosibles || 0), 0);
-    const tipoBD = TIPO_A_BIGDREAMERS[inst.tipo] || "Otro";
+    const modo = document.querySelector('input[name="bd-modo"]:checked').value;
     const rosterCompleto = obtenerRosterCompleto();
 
     try {
-      const { enviados, sinCoincidencia } = await enviarInstrumentoNuevoABigDreamers({
-        materiaBD: materiaActiva,
-        tipo: tipoBD,
-        tema: inst.tema,
-        fecha: inst.fecha,
-        valorTotal: puntosPosibles,
-        puntuacionesPorEstudianteId: puntuaciones,
-        estudiantesRollBook: rosterCompleto
-      });
-      if (sinCoincidencia.length) {
-        bdWarning.textContent = `⚠️ Sin coincidencia en BigDreamers: ${sinCoincidencia.join(", ")}`;
+      let resultado;
+      if (modo === "existente") {
+        const instrumentoIdBD = document.getElementById("bd-select-existente").value;
+        if (!instrumentoIdBD) {
+          bdError.textContent = "Selecciona a cuál instrumento existente agregar las notas.";
+          bdError.classList.remove("hidden");
+          return;
+        }
+        resultado = await enviarAInstrumentoExistenteBigDreamers({
+          materiaBD: materiaActiva,
+          instrumentoIdBD,
+          puntuacionesPorEstudianteId: puntuaciones,
+          estudiantesRollBook: rosterCompleto
+        });
+      } else {
+        const puntosPosibles = (inst.partes || []).reduce((s, p) => s + Number(p.puntosPosibles || 0), 0);
+        const tipoBD = TIPO_A_BIGDREAMERS[inst.tipo] || "Otro";
+        resultado = await enviarInstrumentoNuevoABigDreamers({
+          materiaBD: materiaActiva,
+          tipo: tipoBD,
+          tema: inst.tema,
+          fecha: inst.fecha,
+          valorTotal: puntosPosibles,
+          puntuacionesPorEstudianteId: puntuaciones,
+          estudiantesRollBook: rosterCompleto
+        });
+      }
+
+      if (resultado.sinCoincidencia.length) {
+        bdWarning.textContent = `⚠️ Sin coincidencia en BigDreamers: ${resultado.sinCoincidencia.join(", ")}`;
         bdWarning.classList.remove("hidden");
       }
-      alert(`✅ ${enviados} estudiante(s) enviados a BigDreamers → ${materiaActiva}.`);
+      alert(`✅ ${resultado.enviados} estudiante(s) enviados a BigDreamers → ${materiaActiva}.`);
       modalBD.classList.add("hidden");
     } catch (err) {
       bdError.textContent = "Error al enviar: " + err.message;
