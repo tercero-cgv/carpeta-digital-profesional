@@ -915,3 +915,12 @@ textarea.field-input { resize: vertical; min-height: 4.5rem; }
   .nav-soon { display: none; }
   .sidebar .mt-auto { margin-left: auto; padding: 0.6rem; }
 }
+/* ---------- Arreglo: contraste de opciones en <select> ----------
+   El navegador pinta el menú desplegable de las opciones con fondo
+   blanco por defecto, sin importar el tema de la página. El texto
+   claro que usamos para el tema oscuro queda casi invisible ahí.
+   Esto fuerza texto oscuro legible en ese fondo blanco del navegador. */
+select.field-input option {
+  color: #0B0E2C;
+  background: #ffffff;
+}
