@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ficha de Inscripción del Tripulante</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body class="min-h-screen overflow-x-hidden">
+  <canvas id="starfield"></canvas>
+
+  <main class="relative z-10 min-h-screen">
+    <div id="kiosk-scroll-standalone" class="kiosk-scroll" style="min-height:100vh">
+      <div class="kiosk-form-card">
+        <div class="text-center mb-6">
+          <h2 class="font-display text-2xl text-slate-100">Ficha de Inscripción del Tripulante</h2>
+          <p class="text-slate-400 text-sm mt-1">Por favor completa todos los campos. Tu información queda protegida.</p>
+        </div>
+
+        <div id="cargando-aviso" class="text-center text-slate-500 text-sm font-mono py-8">Cargando formulario...</div>
+
+        <form id="form-ficha-padres" class="hidden space-y-8" novalidate autocomplete="off">
+
+          <input type="hidden" id="ficha-estudiante-id" required />
+
+          <fieldset class="ficha-fieldset">
+            <legend>¿Para cuál estudiante es esta ficha?</legend>
+            <select id="ficha-select-estudiante" class="field-input" required>
+              <option value="" disabled selected>Selecciona el nombre...</option>
+            </select>
+          </fieldset>
+
+          <fieldset class="ficha-fieldset">
+            <legend>Datos del Estudiante</legend>
+            <div class="ficha-grid-4">
+              <div><label class="field-label">Nombre</label><input type="text" id="est-nombre" class="field-input" required /></div>
+              <div><label class="field-label">Inicial</label><input type="text" maxlength="2" id="est-inicial" class="field-input" /></div>
+              <div><label class="field-label">Apellido Paterno</label><input type="text" id="est-apellido-paterno" class="field-input" required /></div>
+              <div><label class="field-label">Apellido Materno</label><input type="text" id="est-apellido-materno" class="field-input" /></div>
+            </div>
+            <div class="ficha-grid-4 mt-4">
+              <div><label class="field-label">Día de nacimiento</label><input type="number" min="1" max="31" id="est-nac-dia" class="field-input" required /></div>
+              <div><label class="field-label">Mes de nacimiento</label><input type="number" min="1" max="12" id="est-nac-mes" class="field-input" required /></div>
+              <div><label class="field-label">Año de nacimiento</label><input type="number" min="1990" max="2030" id="est-nac-ano" class="field-input" required /></div>
+              <div><label class="field-label">Edad</label><input type="number" min="0" max="18" id="est-edad" class="field-input" required /></div>
+            </div>
+            <div class="mt-4">
+              <label class="field-label">Dirección residencial/postal</label>
+              <textarea id="est-direccion" class="field-input" rows="2" required></textarea>
+            </div>
+            <div class="mt-4 max-w-xs">
+              <label class="field-label">Teléfono celular</label>
+              <input type="tel" id="est-telefono" class="field-input" required />
+            </div>
+          </fieldset>
+
+          <fieldset class="ficha-fieldset">
+            <legend>Madre / Encargada</legend>
+            <div class="ficha-grid-2">
+              <div><label class="field-label">Nombre</label><input type="text" id="madre-nombre" class="field-input" /></div>
+              <div><label class="field-label">Ocupación</label><input type="text" id="madre-ocupacion" class="field-input" /></div>
+              <div><label class="field-label">Lugar de trabajo</label><input type="text" id="madre-trabajo" class="field-input" /></div>
+              <div><label class="field-label">Teléfono del trabajo</label><input type="tel" id="madre-tel-trabajo" class="field-input" /></div>
+            </div>
+          </fieldset>
+
+          <fieldset class="ficha-fieldset">
+            <legend>Padre / Encargado</legend>
+            <div class="ficha-grid-2">
+              <div><label class="field-label">Nombre</label><input type="text" id="padre-nombre" class="field-input" /></div>
+              <div><label class="field-label">Ocupación</label><input type="text" id="padre-ocupacion" class="field-input" /></div>
+              <div><label class="field-label">Lugar de trabajo</label><input type="text" id="padre-trabajo" class="field-input" /></div>
+              <div><label class="field-label">Teléfono del trabajo</label><input type="tel" id="padre-tel-trabajo" class="field-input" /></div>
+            </div>
+          </fieldset>
+
+          <fieldset class="ficha-fieldset">
+            <legend>El estudiante vive con</legend>
+            <div class="ficha-radio-row" id="grupo-vive-con">
+              <label class="ficha-radio"><input type="radio" name="vive-con" value="Ambos padres" required /> Ambos padres</label>
+              <label class="ficha-radio"><input type="radio" name="vive-con" value="Madre" /> Madre</label>
+              <label class="ficha-radio"><input type="radio" name="vive-con" value="Padre" /> Padre</label>
+              <label class="ficha-radio"><input type="radio" name="vive-con" value="Encargado" /> Encargado</label>
+            </div>
+          </fieldset>
+
+          <fieldset class="ficha-fieldset">
+            <legend>Entorno y Conectividad</legend>
+            <div class="ficha-grid-2">
+              <div>
+                <label class="field-label">¿Posee computadora en el hogar?</label>
+                <div class="ficha-radio-row">
+                  <label class="ficha-radio"><input type="radio" name="tiene-computadora" value="Si" required /> Sí</label>
+                  <label class="ficha-radio"><input type="radio" name="tiene-computadora" value="No" /> No</label>
+                </div>
+              </div>
+              <div>
+                <label class="field-label">¿Tiene acceso a internet?</label>
+                <div class="ficha-radio-row">
+                  <label class="ficha-radio"><input type="radio" name="tiene-internet" value="Si" required /> Sí</label>
+                  <label class="ficha-radio"><input type="radio" name="tiene-internet" value="No" /> No</label>
+                </div>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="ficha-fieldset">
+            <legend>Historial Académico y Servicios</legend>
+            <div class="ficha-grid-2">
+              <div>
+                <label class="field-label">¿Está repitiendo el grado actual?</label>
+                <div class="ficha-radio-row">
+                  <label class="ficha-radio"><input type="radio" name="repite-grado" value="Si" required /> Sí</label>
+                  <label class="ficha-radio"><input type="radio" name="repite-grado" value="No" /> No</label>
+                </div>
+              </div>
+              <div>
+                <label class="field-label">¿Ha repetido un grado anteriormente?</label>
+                <div class="ficha-radio-row">
+                  <label class="ficha-radio"><input type="radio" name="repitio-antes" value="Si" required /> Sí</label>
+                  <label class="ficha-radio"><input type="radio" name="repitio-antes" value="No" /> No</label>
+                </div>
+              </div>
+            </div>
+            <div class="mt-4">
+              <label class="field-label">¿Pertenece al programa de Educación Especial?</label>
+              <div class="ficha-radio-row">
+                <label class="ficha-radio"><input type="radio" name="educ-especial" value="Si" required /> Sí</label>
+                <label class="ficha-radio"><input type="radio" name="educ-especial" value="No" /> No</label>
+              </div>
+              <div id="grupo-terapias" class="hidden mt-3 ficha-checkbox-row">
+                <label class="ficha-checkbox"><input type="checkbox" name="terapia" value="Terapia del habla" /> Terapia del habla</label>
+                <label class="ficha-checkbox"><input type="checkbox" name="terapia" value="Terapia ocupacional" /> Terapia ocupacional</label>
+                <label class="ficha-checkbox"><input type="checkbox" name="terapia" value="Psicológica" /> Psicológica</label>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="ficha-fieldset">
+            <legend>Salud y Emergencias</legend>
+            <div>
+              <label class="field-label">¿Padece de alguna enfermedad? Especifica</label>
+              <textarea id="salud-enfermedad" class="field-input" rows="2" placeholder="Escribe 'Ninguna' si no aplica"></textarea>
+            </div>
+            <div class="mt-4">
+              <label class="field-label">¿Utiliza medicamentos para tratarla?</label>
+              <div class="ficha-radio-row">
+                <label class="ficha-radio"><input type="radio" name="usa-medicamentos" value="Si" required /> Sí</label>
+                <label class="ficha-radio"><input type="radio" name="usa-medicamentos" value="No" /> No</label>
+              </div>
+            </div>
+
+            <div class="ficha-grid-3 mt-5">
+              <div><label class="field-label">Contacto de Emergencia — Nombre</label><input type="text" id="emerg-nombre" class="field-input" required /></div>
+              <div><label class="field-label">Parentesco</label><input type="text" id="emerg-parentesco" class="field-input" required /></div>
+              <div><label class="field-label">Teléfono(s)</label><input type="tel" id="emerg-telefono" class="field-input" required /></div>
+            </div>
+
+            <div class="autorizacion-box mt-5">
+              <p class="text-sm text-slate-300 leading-relaxed">
+                Yo, <input type="text" id="autoriza-encargado" class="inline-field" placeholder="nombre del encargado" required />,
+                autorizo a <input type="text" id="autoriza-contacto" class="inline-field" placeholder="nombre de contacto" required />
+                a presentarse en la escuela en caso de emergencia y tomar decisiones en mi representación mientras se me localiza.
+              </p>
+            </div>
+
+            <div class="mt-5">
+              <label class="field-label">Firma digital del encargado</label>
+              <div class="signature-wrap">
+                <canvas id="firma-canvas" class="signature-canvas"></canvas>
+                <button type="button" id="firma-limpiar-btn" class="signature-clear-btn">Borrar firma</button>
+              </div>
+              <p class="text-xs text-slate-500 mt-1 font-mono" id="firma-fecha"></p>
+            </div>
+
+            <div class="mt-5">
+              <label class="field-label">Personas NO autorizadas a visitar el plantel o retirar al menor</label>
+              <textarea id="salud-no-autorizados" class="field-input" rows="2" placeholder="Escribe 'Ninguna' si no aplica"></textarea>
+            </div>
+          </fieldset>
+
+          <p id="ficha-form-error" class="hidden text-sm text-amber-400/90 font-medium" role="alert"></p>
+
+          <button type="submit" id="ficha-submit-btn" class="launch-btn w-full">
+            <span id="ficha-submit-text">Enviar Formulario</span>
+            <span id="ficha-submit-spinner" class="hidden loader-dot-group" aria-hidden="true">
+              <span></span><span></span><span></span>
+            </span>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div id="exito-standalone" class="hidden" style="min-height:100vh;display:flex;align-items:center;justify-content:center">
+      <div class="text-center">
+        <div class="text-6xl mb-4">🛰️</div>
+        <h2 class="font-display text-2xl text-slate-100 mb-2">¡Misión cumplida!</h2>
+        <p class="text-slate-400">Tu tripulante ha sido registrado. Ya puedes cerrar esta página.</p>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="js/firebase-config.js"></script>
+  <script type="module" src="js/ficha-publica.js"></script>
+  <script src="js/starfield.js"></script>
+</body>
+</html>
