@@ -8,6 +8,8 @@ import {
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
+const TEACHER_EMAIL = "de128954@miescuela.pr";
+
 const loginScreen = document.getElementById("login-screen");
 const dashboard = document.getElementById("dashboard");
 const loginForm = document.getElementById("login-form");
@@ -76,7 +78,14 @@ logoutBtn.addEventListener("click", async () => {
 });
 
 onAuthStateChanged(auth, (user) => {
-  if (user) {
+  // CRÍTICO: no basta con "user existe" — una sesión anónima (la que usa
+  // ficha-padres.html para el enlace público de padres) también cuenta
+  // como "user" en Firebase, y como comparte navegador/origen con el
+  // panel admin, puede reemplazar tu sesión real sin que lo notes.
+  // Por eso se exige explícitamente que sea TU correo, no cualquier sesión.
+  const esElMaestro = user && !user.isAnonymous && user.email === TEACHER_EMAIL;
+
+  if (esElMaestro) {
     loginScreen.classList.add("hidden");
     dashboard.classList.remove("hidden");
     userEmailLabel.textContent = user.email;
@@ -84,5 +93,10 @@ onAuthStateChanged(auth, (user) => {
     dashboard.classList.add("hidden");
     loginScreen.classList.remove("hidden");
     loginForm.reset();
+
+    // Si había una sesión "colada" (anónima u otro correo), se cierra
+    // activamente en vez de solo ocultar el dashboard — así el próximo
+    // login parte de cero y no arrastra un estado de sesión inconsistente.
+    if (user) signOut(auth);
   }
 });

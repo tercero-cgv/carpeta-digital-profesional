@@ -32,17 +32,6 @@ onSnapshot(
   (error) => console.error("Error escuchando perfiles_estudiantes:", error)
 );
 
-/**
- * Guarda la ficha enviada desde el Modo Kiosco.
- * Se guarda siempre con estado "pendiente" para que el maestro la
- * revise antes de darla por buena — dado el volumen de campos y que
- * los llena un tercero (el encargado), no un maestro entrenado en el
- * formato exacto que se espera.
- *
- * `datos.estudianteId` enlaza este perfil con el documento de la
- * colección "estudiantes" (Fase 2), reutilizando obtenerListaTripulacion()
- * para el selector — la "clonación" que se diseñó desde esa fase.
- */
 export async function agregarPerfil(datos) {
   return addDoc(perfilesRef, {
     ...datos,

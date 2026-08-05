@@ -1,9 +1,5 @@
 // ============================================================
 // CITACIONES E INTERVENCIONES — Firestore
-// Ambas colecciones exigen `estudianteId` — nunca se guarda un
-// registro sin estudiante, tal como se pidió ("atado al estudiante
-// en todo momento"). Esta fase NO se conecta a BigDreamers ni a
-// ningún otro sistema — es standalone según lo pedido.
 // ============================================================
 import { db } from "./firebase-config.js";
 import {
@@ -57,7 +53,6 @@ export async function guardarIntervencion(datos) {
   return addDoc(intervencionesRef, { ...datos, creadoEn: serverTimestamp() });
 }
 
-// ---------- Configuración de la escuela (se pide una sola vez) ----------
 export async function obtenerConfigEscuela() {
   const snap = await getDoc(escuelaConfigRef);
   return snap.exists() ? snap.data() : null;

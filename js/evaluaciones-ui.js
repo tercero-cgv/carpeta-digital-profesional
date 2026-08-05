@@ -1,25 +1,15 @@
 // ============================================================
 // EVALUACIONES UI — Materias, Instrumentos, Tabulación por partes,
-// envío a BigDreamers (con emparejamiento por id persistente)
+// envío a BigDreamers (nuevo o existente)
 // ============================================================
 import { obtenerListaTripulacion, obtenerRosterCompleto } from "./estudiantes-data.js";
 import { escucharInstrumentos, crearInstrumento, agregarParte, marcarPuntuacion } from "./evaluaciones-data.js";
 import { enviarInstrumentoNuevoABigDreamers, enviarAInstrumentoExistenteBigDreamers, obtenerInstrumentosBigDreamers } from "./bigdreamers-bridge.js";
 
-// El tipo de instrumento de Roll Book es más amplio que el de
-// BigDreamers (que solo tiene 6 opciones). Los que no tienen
-// equivalente exacto se envían como "Otro" — mejor eso que
-// inventar una equivalencia semántica que no existe.
 const TIPO_A_BIGDREAMERS = {
-  Dictado: "Otro",
-  Proyecto: "Otro",
-  Assessment: "Assessment",
-  Examen: "Otro",
-  STEM: "Otro",
-  "Trabajo Especial": "Trabajo Especial",
-  "Prueba Corta": "Prueba Corta",
-  "Tarea Desempeño": "Tarea Desempeño",
-  Otro: "Otro"
+  Dictado: "Otro", Proyecto: "Otro", Assessment: "Assessment", Examen: "Otro", STEM: "Otro",
+  "Trabajo Especial": "Trabajo Especial", "Prueba Corta": "Prueba Corta",
+  "Tarea Desempeño": "Tarea Desempeño", Otro: "Otro"
 };
 
 let materiaActiva = "ADL";
@@ -53,34 +43,27 @@ tabsMateria.querySelectorAll(".month-tab").forEach((btn) => {
 
 function renderListaInstrumentos() {
   const filtrados = cacheInstrumentos.filter((i) => i.materia === materiaActiva);
-
   if (filtrados.length === 0) {
     instrumentosBody.innerHTML = "";
     instrumentosEmpty.classList.remove("hidden");
     return;
   }
   instrumentosEmpty.classList.add("hidden");
-
-  instrumentosBody.innerHTML = filtrados
-    .map((inst) => {
-      const puntosPosibles = (inst.partes || []).reduce((sum, p) => sum + Number(p.puntosPosibles || 0), 0);
-      return `
-        <tr>
-          <td class="crew-name">${escapeHtml(inst.tipo)} — ${escapeHtml(inst.tema)}</td>
-          <td class="hide-sm font-mono text-xs text-slate-400">${escapeHtml(inst.semana)}</td>
-          <td class="hide-sm font-mono text-xs text-slate-400">${escapeHtml(inst.fecha)}</td>
-          <td class="font-mono text-sm text-slate-300">${puntosPosibles}</td>
-          <td class="text-right"><button class="row-action-btn" data-ver="${inst.id}">👁</button></td>
-        </tr>
-      `;
-    })
-    .join("");
+  instrumentosBody.innerHTML = filtrados.map((inst) => {
+    const puntosPosibles = (inst.partes || []).reduce((sum, p) => sum + Number(p.puntosPosibles || 0), 0);
+    return `
+      <tr>
+        <td class="crew-name">${escapeHtml(inst.tipo)} — ${escapeHtml(inst.tema)}</td>
+        <td class="hide-sm font-mono text-xs text-slate-400">${escapeHtml(inst.semana)}</td>
+        <td class="hide-sm font-mono text-xs text-slate-400">${escapeHtml(inst.fecha)}</td>
+        <td class="font-mono text-sm text-slate-300">${puntosPosibles}</td>
+        <td class="text-right"><button class="row-action-btn" data-ver="${inst.id}">👁</button></td>
+      </tr>
+    `;
+  }).join("");
 
   instrumentosBody.querySelectorAll("[data-ver]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      instrumentoAbiertoId = btn.dataset.ver;
-      renderTabulacion();
-    });
+    btn.addEventListener("click", () => { instrumentoAbiertoId = btn.dataset.ver; renderTabulacion(); });
   });
 }
 
@@ -124,10 +107,7 @@ function calcularTotal(instrumento, estudianteId) {
 
 function renderTabulacion() {
   const inst = cacheInstrumentos.find((i) => i.id === instrumentoAbiertoId);
-  if (!inst) {
-    tabulacionWrap.classList.add("hidden");
-    return;
-  }
+  if (!inst) { tabulacionWrap.classList.add("hidden"); return; }
   tabulacionWrap.classList.remove("hidden");
 
   if (cacheEstudiantes.length === 0) {
@@ -136,30 +116,23 @@ function renderTabulacion() {
   }
 
   const partes = inst.partes || [];
-  const headerPartes = partes
-    .map((p) => `<th class="att-day-col">${escapeHtml(p.nombre)}<br/><span class="att-day-num">${p.puntosPosibles} pts</span></th>`)
-    .join("");
+  const headerPartes = partes.map((p) => `<th class="att-day-col">${escapeHtml(p.nombre)}<br/><span class="att-day-num">${p.puntosPosibles} pts</span></th>`).join("");
 
-  const filas = cacheEstudiantes
-    .map((est) => {
-      const { total, porcentaje } = calcularTotal(inst, est.id);
-      const celdas = partes
-        .map((p) => {
-          const valor = inst.puntuaciones?.[est.id]?.porParte?.[p.id] ?? "";
-          return `<td><input type="number" min="0" max="${p.puntosPosibles}" class="att-cell eval-cell" value="${valor}"
-            data-estudiante="${est.id}" data-parte="${p.id}" /></td>`;
-        })
-        .join("");
-      return `
-        <tr>
-          <td class="att-name-col">${escapeHtml(est.nombreCompleto)}</td>
-          ${celdas}
-          <td class="att-total att-total-presente">${total}</td>
-          <td class="att-total att-total-justificada">${porcentaje}%</td>
-        </tr>
-      `;
-    })
-    .join("");
+  const filas = cacheEstudiantes.map((est) => {
+    const { total, porcentaje } = calcularTotal(inst, est.id);
+    const celdas = partes.map((p) => {
+      const valor = inst.puntuaciones?.[est.id]?.porParte?.[p.id] ?? "";
+      return `<td><input type="number" min="0" max="${p.puntosPosibles}" class="att-cell eval-cell" value="${valor}" data-estudiante="${est.id}" data-parte="${p.id}" /></td>`;
+    }).join("");
+    return `
+      <tr>
+        <td class="att-name-col">${escapeHtml(est.nombreCompleto)}</td>
+        ${celdas}
+        <td class="att-total att-total-presente">${total}</td>
+        <td class="att-total att-total-justificada">${porcentaje}%</td>
+      </tr>
+    `;
+  }).join("");
 
   tabulacionWrap.innerHTML = `
     <div class="flex items-center justify-between flex-wrap gap-3 p-4 pb-0">
@@ -179,14 +152,7 @@ function renderTabulacion() {
     </div>
     <div style="overflow-x:auto">
       <table class="attendance-table">
-        <thead>
-          <tr>
-            <th class="att-name-col">Estudiante</th>
-            ${headerPartes}
-            <th class="att-total-header">Total</th>
-            <th class="att-total-header">%</th>
-          </tr>
-        </thead>
+        <thead><tr><th class="att-name-col">Estudiante</th>${headerPartes}<th class="att-total-header">Total</th><th class="att-total-header">%</th></tr></thead>
         <tbody>${filas}</tbody>
       </table>
     </div>
@@ -197,14 +163,12 @@ function renderTabulacion() {
       const estudianteId = input.dataset.estudiante;
       const parteId = input.dataset.parte;
       const puntos = Number(input.value) || 0;
-
       const instActual = cacheInstrumentos.find((i) => i.id === inst.id);
       const porParteActual = { ...(instActual.puntuaciones?.[estudianteId]?.porParte || {}) };
       porParteActual[parteId] = puntos;
       const totalNuevo = Object.values(porParteActual).reduce((s, v) => s + Number(v || 0), 0);
       const puntosPosibles = (instActual.partes || []).reduce((s, p) => s + Number(p.puntosPosibles || 0), 0);
       const porcentajeNuevo = puntosPosibles > 0 ? Math.round((totalNuevo / puntosPosibles) * 1000) / 10 : 0;
-
       await marcarPuntuacion(inst.id, estudianteId, parteId, puntos, totalNuevo, porcentajeNuevo);
     });
   });
@@ -224,20 +188,16 @@ function renderTabulacion() {
 function abrirModalBD(inst) {
   bdError.classList.add("hidden");
   bdWarning.classList.add("hidden");
-
-  // Reset del selector de modo cada vez que se abre
   document.querySelector('input[name="bd-modo"][value="nuevo"]').checked = true;
   document.getElementById("bd-select-existente-wrap").classList.add("hidden");
 
-  const filas = cacheEstudiantes
-    .map((est) => {
-      const { total, puntosPosibles } = calcularTotal(inst, est.id);
-      return `<div style="display:flex;justify-content:space-between;padding:.4rem .6rem" class="text-sm">
-        <span class="text-slate-300">${escapeHtml(est.nombreCompleto)}</span>
-        <span class="font-mono text-slate-400">${total}/${puntosPosibles}</span>
-      </div>`;
-    })
-    .join("");
+  const filas = cacheEstudiantes.map((est) => {
+    const { total, puntosPosibles } = calcularTotal(inst, est.id);
+    return `<div style="display:flex;justify-content:space-between;padding:.4rem .6rem" class="text-sm">
+      <span class="text-slate-300">${escapeHtml(est.nombreCompleto)}</span>
+      <span class="font-mono text-slate-400">${total}/${puntosPosibles}</span>
+    </div>`;
+  }).join("");
   bdPreviewRows.innerHTML = filas;
   modalBD.classList.remove("hidden");
 
@@ -258,10 +218,7 @@ function abrirModalBD(inst) {
 
   document.getElementById("modal-bd-confirm-btn").onclick = async () => {
     const puntuaciones = {};
-    cacheEstudiantes.forEach((est) => {
-      const { total } = calcularTotal(inst, est.id);
-      puntuaciones[est.id] = total;
-    });
+    cacheEstudiantes.forEach((est) => { const { total } = calcularTotal(inst, est.id); puntuaciones[est.id] = total; });
     const modo = document.querySelector('input[name="bd-modo"]:checked').value;
     const rosterCompleto = obtenerRosterCompleto();
 
@@ -275,22 +232,14 @@ function abrirModalBD(inst) {
           return;
         }
         resultado = await enviarAInstrumentoExistenteBigDreamers({
-          materiaBD: materiaActiva,
-          instrumentoIdBD,
-          puntuacionesPorEstudianteId: puntuaciones,
-          estudiantesRollBook: rosterCompleto
+          materiaBD: materiaActiva, instrumentoIdBD, puntuacionesPorEstudianteId: puntuaciones, estudiantesRollBook: rosterCompleto
         });
       } else {
         const puntosPosibles = (inst.partes || []).reduce((s, p) => s + Number(p.puntosPosibles || 0), 0);
         const tipoBD = TIPO_A_BIGDREAMERS[inst.tipo] || "Otro";
         resultado = await enviarInstrumentoNuevoABigDreamers({
-          materiaBD: materiaActiva,
-          tipo: tipoBD,
-          tema: inst.tema,
-          fecha: inst.fecha,
-          valorTotal: puntosPosibles,
-          puntuacionesPorEstudianteId: puntuaciones,
-          estudiantesRollBook: rosterCompleto
+          materiaBD: materiaActiva, tipo: tipoBD, tema: inst.tema, fecha: inst.fecha,
+          valorTotal: puntosPosibles, puntuacionesPorEstudianteId: puntuaciones, estudiantesRollBook: rosterCompleto
         });
       }
 

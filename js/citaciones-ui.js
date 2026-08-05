@@ -29,12 +29,8 @@ const printArea = document.getElementById("print-area");
 
 async function initConfigEscuela() {
   configEscuela = await obtenerConfigEscuela();
-  if (configEscuela) {
-    mostrarResumenEscuela();
-  } else {
-    configBox.classList.remove("hidden");
-    resumenBox.classList.add("hidden");
-  }
+  if (configEscuela) mostrarResumenEscuela();
+  else { configBox.classList.remove("hidden"); resumenBox.classList.add("hidden"); }
 }
 
 function mostrarResumenEscuela() {
@@ -77,10 +73,7 @@ tabsCitInt.querySelectorAll(".month-tab").forEach((btn) => {
   });
 });
 
-filtroSelect.addEventListener("change", () => {
-  filtroEstudianteId = filtroSelect.value;
-  renderLista();
-});
+filtroSelect.addEventListener("change", () => { filtroEstudianteId = filtroSelect.value; renderLista(); });
 
 function poblarSelectoresEstudiante() {
   const opciones = cacheEstudiantes.map((e) => `<option value="${e.id}">${escapeHtml(e.nombreCompleto)}</option>`).join("");
@@ -112,34 +105,26 @@ function renderLista() {
   emptyState.classList.add("hidden");
 
   if (tipoActivo === "citaciones") {
-    tbody.innerHTML = datos
-      .map(
-        (c) => `
-        <tr>
-          <td class="crew-name">${escapeHtml(c.estudianteNombre)}</td>
-          <td class="hide-sm font-mono text-xs text-slate-400">${escapeHtml(c.fecha)}</td>
-          <td class="text-sm text-slate-300">${escapeHtml((c.motivos || []).join(", "))}</td>
-          <td class="hide-sm text-sm text-slate-400">${escapeHtml(c.encargadoNombre)}</td>
-          <td class="text-right"><button class="row-action-btn" data-imprimir-cit="${c.id}">🖨️</button></td>
-        </tr>`
-      )
-      .join("");
+    tbody.innerHTML = datos.map((c) => `
+      <tr>
+        <td class="crew-name">${escapeHtml(c.estudianteNombre)}</td>
+        <td class="hide-sm font-mono text-xs text-slate-400">${escapeHtml(c.fecha)}</td>
+        <td class="text-sm text-slate-300">${escapeHtml((c.motivos || []).join(", "))}</td>
+        <td class="hide-sm text-sm text-slate-400">${escapeHtml(c.encargadoNombre)}</td>
+        <td class="text-right"><button class="row-action-btn" data-imprimir-cit="${c.id}">🖨️</button></td>
+      </tr>`).join("");
     tbody.querySelectorAll("[data-imprimir-cit]").forEach((btn) => {
       btn.addEventListener("click", () => imprimirCitacion(cacheCitaciones.find((c) => c.id === btn.dataset.imprimirCit)));
     });
   } else {
-    tbody.innerHTML = datos
-      .map(
-        (i) => `
-        <tr>
-          <td class="crew-name">${escapeHtml(i.estudianteNombre)}</td>
-          <td class="hide-sm font-mono text-xs text-slate-400">${escapeHtml(i.fecha)}</td>
-          <td class="text-sm text-slate-300">${escapeHtml((i.metodo || []).join(", "))}</td>
-          <td class="hide-sm text-sm text-slate-400 truncate-notes">${escapeHtml(i.razon)}</td>
-          <td class="text-right"><button class="row-action-btn" data-imprimir-int="${i.id}">🖨️</button></td>
-        </tr>`
-      )
-      .join("");
+    tbody.innerHTML = datos.map((i) => `
+      <tr>
+        <td class="crew-name">${escapeHtml(i.estudianteNombre)}</td>
+        <td class="hide-sm font-mono text-xs text-slate-400">${escapeHtml(i.fecha)}</td>
+        <td class="text-sm text-slate-300">${escapeHtml((i.metodo || []).join(", "))}</td>
+        <td class="hide-sm text-sm text-slate-400 truncate-notes">${escapeHtml(i.razon)}</td>
+        <td class="text-right"><button class="row-action-btn" data-imprimir-int="${i.id}">🖨️</button></td>
+      </tr>`).join("");
     tbody.querySelectorAll("[data-imprimir-int]").forEach((btn) => {
       btn.addEventListener("click", () => imprimirIntervencion(cacheIntervenciones.find((i) => i.id === btn.dataset.imprimirInt)));
     });
@@ -165,19 +150,14 @@ document.getElementById("form-citacion").addEventListener("submit", async (e) =>
   e.preventDefault();
   const errorEl = document.getElementById("citacion-form-error");
   const estudianteId = document.getElementById("cit-estudiante").value;
-  if (!estudianteId) {
-    errorEl.textContent = "Selecciona un estudiante.";
-    errorEl.classList.remove("hidden");
-    return;
-  }
+  if (!estudianteId) { errorEl.textContent = "Selecciona un estudiante."; errorEl.classList.remove("hidden"); return; }
   const estudiante = cacheEstudiantes.find((e) => e.id === estudianteId);
   const motivos = Array.from(document.querySelectorAll('input[name="cit-motivo"]:checked')).map((el) => el.value);
   const motivoOtro = document.getElementById("cit-motivo-otro").value.trim();
   if (motivoOtro) motivos.push(`Otro: ${motivoOtro}`);
 
   const datos = {
-    estudianteId,
-    estudianteNombre: estudiante.nombreCompleto,
+    estudianteId, estudianteNombre: estudiante.nombreCompleto,
     fecha: document.getElementById("cit-fecha").value,
     hora: document.getElementById("cit-hora").value,
     lugar: document.getElementById("cit-lugar").value.trim(),
@@ -200,17 +180,12 @@ document.getElementById("form-intervencion").addEventListener("submit", async (e
   e.preventDefault();
   const errorEl = document.getElementById("intervencion-form-error");
   const estudianteId = document.getElementById("int-estudiante").value;
-  if (!estudianteId) {
-    errorEl.textContent = "Selecciona un estudiante.";
-    errorEl.classList.remove("hidden");
-    return;
-  }
+  if (!estudianteId) { errorEl.textContent = "Selecciona un estudiante."; errorEl.classList.remove("hidden"); return; }
   const estudiante = cacheEstudiantes.find((e) => e.id === estudianteId);
   const metodo = Array.from(document.querySelectorAll('input[name="int-metodo"]:checked')).map((el) => el.value);
 
   const datos = {
-    estudianteId,
-    estudianteNombre: estudiante.nombreCompleto,
+    estudianteId, estudianteNombre: estudiante.nombreCompleto,
     contacto: document.getElementById("int-contacto").value.trim(),
     fecha: document.getElementById("int-fecha").value,
     hora: document.getElementById("int-hora").value,
@@ -290,14 +265,8 @@ function imprimirIntervencion(i) {
   window.print();
 }
 
-escucharCitaciones((datos) => {
-  cacheCitaciones = datos;
-  if (tipoActivo === "citaciones") renderLista();
-});
-escucharIntervenciones((datos) => {
-  cacheIntervenciones = datos;
-  if (tipoActivo === "intervenciones") renderLista();
-});
+escucharCitaciones((datos) => { cacheCitaciones = datos; if (tipoActivo === "citaciones") renderLista(); });
+escucharIntervenciones((datos) => { cacheIntervenciones = datos; if (tipoActivo === "intervenciones") renderLista(); });
 
 export function refrescarEstudiantesCitaciones() {
   cacheEstudiantes = obtenerListaTripulacion();

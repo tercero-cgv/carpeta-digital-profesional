@@ -1,8 +1,5 @@
 // ============================================================
 // EVALUACIONES — CRUD contra Firestore (colección "instrumentos")
-// Un documento por instrumento. `partes` son las columnas de
-// puntos posibles (desglose); `puntuaciones` guarda, por
-// estudiante, los puntos obtenidos en cada parte + total + %.
 // ============================================================
 import { db } from "./firebase-config.js";
 import {
@@ -40,11 +37,7 @@ onSnapshot(
 
 export async function crearInstrumento({ materia, tipo, tema, fecha, semana }) {
   return addDoc(instrumentosRef, {
-    materia,
-    tipo,
-    tema,
-    fecha,
-    semana,
+    materia, tipo, tema, fecha, semana,
     partes: [{ id: `p-${Date.now()}`, nombre: "Parte 1", puntosPosibles: 10 }],
     puntuaciones: {},
     creadoEn: serverTimestamp()
@@ -53,16 +46,9 @@ export async function crearInstrumento({ materia, tipo, tema, fecha, semana }) {
 
 export async function agregarParte(instrumentoId, nombre, puntosPosibles) {
   const ref = doc(db, "instrumentos", instrumentoId);
-  return updateDoc(ref, {
-    partes: arrayUnion({ id: `p-${Date.now()}`, nombre, puntosPosibles })
-  });
+  return updateDoc(ref, { partes: arrayUnion({ id: `p-${Date.now()}`, nombre, puntosPosibles }) });
 }
 
-/**
- * Guarda los puntos obtenidos de un estudiante en una parte específica,
- * junto con el total y porcentaje ya recalculados (el cliente los
- * calcula porque ya tiene el documento completo en caché).
- */
 export async function marcarPuntuacion(instrumentoId, estudianteId, parteId, puntos, total, porcentaje) {
   const ref = doc(db, "instrumentos", instrumentoId);
   return updateDoc(ref, {

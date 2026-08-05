@@ -1,11 +1,5 @@
 // ============================================================
 // FICHA PÚBLICA — Página standalone para padres (enlace/QR compartido)
-// Usa Firebase Anonymous Auth: cada visitante obtiene una sesión
-// temporal sin contraseña. Las reglas de Firestore solo permiten,
-// con esa sesión anónima, LEER nombres de estudiantes (para el
-// desplegable) y CREAR una ficha nueva — nunca leer perfiles ya
-// guardados de nadie. Todo lo demás de Roll Book sigue bloqueado
-// para cualquiera que no sea la cuenta real del maestro.
 // ============================================================
 import { auth, db } from "./firebase-config.js";
 import { signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
@@ -32,17 +26,12 @@ function escapeHtml(str) {
   return (str || "").toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-// ============================================================
-// 1. AUTENTICACIÓN ANÓNIMA + CARGA DEL ROSTER (solo nombres)
-// ============================================================
 async function init() {
   try {
     await signInAnonymously(auth);
     const q = query(collection(db, "estudiantes"), orderBy("apellidos"));
     const snap = await getDocs(q);
-    const activos = snap.docs
-      .map((d) => ({ id: d.id, ...d.data() }))
-      .filter((e) => e.activo !== false);
+    const activos = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((e) => e.activo !== false);
 
     selectEstudiante.innerHTML =
       '<option value="" disabled selected>Selecciona el nombre...</option>' +
@@ -58,9 +47,6 @@ async function init() {
   }
 }
 
-// ============================================================
-// 2. CAMPOS CONDICIONALES
-// ============================================================
 document.querySelectorAll('input[name="educ-especial"]').forEach((radio) => {
   radio.addEventListener("change", () => {
     const grupoTerapias = document.getElementById("grupo-terapias");
@@ -69,9 +55,6 @@ document.querySelectorAll('input[name="educ-especial"]').forEach((radio) => {
   });
 });
 
-// ============================================================
-// 3. FIRMA DIGITAL
-// ============================================================
 const canvas = document.getElementById("firma-canvas");
 const ctx = canvas.getContext("2d");
 let firmando = false;
@@ -96,21 +79,8 @@ function posicionEvento(e) {
   const punto = e.touches ? e.touches[0] : e;
   return { x: punto.clientX - rect.left, y: punto.clientY - rect.top };
 }
-function empezarTrazo(e) {
-  firmando = true;
-  firmaVacia = false;
-  const { x, y } = posicionEvento(e);
-  ctx.beginPath();
-  ctx.moveTo(x, y);
-  e.preventDefault();
-}
-function trazar(e) {
-  if (!firmando) return;
-  const { x, y } = posicionEvento(e);
-  ctx.lineTo(x, y);
-  ctx.stroke();
-  e.preventDefault();
-}
+function empezarTrazo(e) { firmando = true; firmaVacia = false; const { x, y } = posicionEvento(e); ctx.beginPath(); ctx.moveTo(x, y); e.preventDefault(); }
+function trazar(e) { if (!firmando) return; const { x, y } = posicionEvento(e); ctx.lineTo(x, y); ctx.stroke(); e.preventDefault(); }
 function terminarTrazo() { firmando = false; }
 
 canvas.addEventListener("mousedown", empezarTrazo);
@@ -129,20 +99,10 @@ function fechaFirmaHoy() {
   return new Date().toLocaleDateString("es-PR", { day: "numeric", month: "long", year: "numeric" });
 }
 
-// ============================================================
-// 4. ENVÍO — misma estructura que el modo kiosco del panel admin
-// ============================================================
 function val(id) { return document.getElementById(id).value.trim(); }
 function radioValue(name) { return document.querySelector(`input[name="${name}"]:checked`)?.value || ""; }
-
-function showFormError(msg) {
-  formError.textContent = msg;
-  formError.classList.remove("hidden");
-}
-function clearFormError() {
-  formError.textContent = "";
-  formError.classList.add("hidden");
-}
+function showFormError(msg) { formError.textContent = msg; formError.classList.remove("hidden"); }
+function clearFormError() { formError.textContent = ""; formError.classList.add("hidden"); }
 function setSubmitLoading(isLoading) {
   submitBtn.disabled = isLoading;
   submitText.classList.toggle("hidden", isLoading);
@@ -153,14 +113,8 @@ form.addEventListener("submit", async (e) => {
   e.preventDefault();
   clearFormError();
 
-  if (!selectEstudiante.value) {
-    showFormError("Selecciona para cuál estudiante es esta ficha.");
-    return;
-  }
-  if (firmaVacia) {
-    showFormError("Falta la firma digital del encargado.");
-    return;
-  }
+  if (!selectEstudiante.value) { showFormError("Selecciona para cuál estudiante es esta ficha."); return; }
+  if (firmaVacia) { showFormError("Falta la firma digital del encargado."); return; }
 
   const terapias = Array.from(document.querySelectorAll('input[name="terapia"]:checked')).map((el) => el.value);
 
@@ -168,23 +122,13 @@ form.addEventListener("submit", async (e) => {
     estudianteId: selectEstudiante.value,
     estudianteNombreSeleccionado: selectEstudiante.options[selectEstudiante.selectedIndex].text,
     estudiante: {
-      nombre: val("est-nombre"),
-      inicial: val("est-inicial"),
-      apellidoPaterno: val("est-apellido-paterno"),
-      apellidoMaterno: val("est-apellido-materno"),
+      nombre: val("est-nombre"), inicial: val("est-inicial"),
+      apellidoPaterno: val("est-apellido-paterno"), apellidoMaterno: val("est-apellido-materno"),
       nacimiento: { dia: val("est-nac-dia"), mes: val("est-nac-mes"), ano: val("est-nac-ano") },
-      edad: val("est-edad"),
-      direccion: val("est-direccion"),
-      telefono: val("est-telefono")
+      edad: val("est-edad"), direccion: val("est-direccion"), telefono: val("est-telefono")
     },
-    madre: {
-      nombre: val("madre-nombre"), ocupacion: val("madre-ocupacion"),
-      trabajo: val("madre-trabajo"), telTrabajo: val("madre-tel-trabajo")
-    },
-    padre: {
-      nombre: val("padre-nombre"), ocupacion: val("padre-ocupacion"),
-      trabajo: val("padre-trabajo"), telTrabajo: val("padre-tel-trabajo")
-    },
+    madre: { nombre: val("madre-nombre"), ocupacion: val("madre-ocupacion"), trabajo: val("madre-trabajo"), telTrabajo: val("madre-tel-trabajo") },
+    padre: { nombre: val("padre-nombre"), ocupacion: val("padre-ocupacion"), trabajo: val("padre-trabajo"), telTrabajo: val("padre-tel-trabajo") },
     viveCon: radioValue("vive-con"),
     tieneComputadora: radioValue("tiene-computadora"),
     tieneInternet: radioValue("tiene-internet"),
@@ -192,30 +136,24 @@ form.addEventListener("submit", async (e) => {
     repitioAntes: radioValue("repitio-antes"),
     educacionEspecial: radioValue("educ-especial"),
     terapias,
+    consentimientoFotos: radioValue("consiente-fotos"),
+    consentimientoDivulgacionNotas: radioValue("consiente-notas"),
     salud: {
       enfermedad: val("salud-enfermedad"),
       usaMedicamentos: radioValue("usa-medicamentos"),
       noAutorizados: val("salud-no-autorizados")
     },
-    emergencia: {
-      nombre: val("emerg-nombre"), parentesco: val("emerg-parentesco"), telefono: val("emerg-telefono")
-    },
+    emergencia: { nombre: val("emerg-nombre"), parentesco: val("emerg-parentesco"), telefono: val("emerg-telefono") },
     autorizacion: {
-      encargado: val("autoriza-encargado"),
-      contacto: val("autoriza-contacto"),
-      firmaBase64: canvas.toDataURL("image/png"),
-      fecha: fechaFirmaHoy()
+      encargado: val("autoriza-encargado"), contacto: val("autoriza-contacto"),
+      firmaBase64: canvas.toDataURL("image/png"), fecha: fechaFirmaHoy()
     },
-    origen: "formulario-publico" // distingue estas fichas de las llenadas en el kiosco del salón
+    origen: "formulario-publico"
   };
 
   setSubmitLoading(true);
   try {
-    await addDoc(collection(db, "perfiles_estudiantes"), {
-      ...datos,
-      estado: "pendiente",
-      enviadoEn: serverTimestamp()
-    });
+    await addDoc(collection(db, "perfiles_estudiantes"), { ...datos, estado: "pendiente", enviadoEn: serverTimestamp() });
     kioskScroll.classList.add("hidden");
     exitoView.classList.remove("hidden");
   } catch (err) {

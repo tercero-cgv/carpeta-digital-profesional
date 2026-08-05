@@ -11,10 +11,6 @@ import {
   guardarAnoEscolar
 } from "./asistencia-data.js";
 
-const CODIGOS_GRUPALES = ["NC", "GO"]; // afectan a todo el grupo, no solo a la celda tocada
-
-// mesJS: índice de mes de JavaScript (0=enero ... 11=diciembre)
-// anoOffset: 0 = año en que empieza el año escolar, 1 = el año siguiente
 const MESES = [
   { key: "08", nombre: "Agosto", mesJS: 7, anoOffset: 0 },
   { key: "09", nombre: "Septiembre", mesJS: 8, anoOffset: 0 },
@@ -29,6 +25,7 @@ const MESES = [
 ];
 const DIA_LABEL = ["D", "L", "M", "X", "J", "V", "S"];
 const CODIGOS = ["1", "0", "T", "J", "IMP", "GO", "NC"];
+const CODIGOS_GRUPALES = ["NC", "GO"];
 
 let anoEscolarInicio = null;
 let mesActivo = null;
@@ -46,12 +43,8 @@ const vistaAnual = document.getElementById("vista-anual");
 
 async function initAnoEscolar() {
   anoEscolarInicio = await obtenerAnoEscolar();
-  if (anoEscolarInicio) {
-    mostrarResumenAno();
-  } else {
-    configBox.classList.remove("hidden");
-    resumenBox.classList.add("hidden");
-  }
+  if (anoEscolarInicio) mostrarResumenAno();
+  else { configBox.classList.remove("hidden"); resumenBox.classList.add("hidden"); }
   renderTabs();
 }
 
@@ -98,15 +91,10 @@ function generarDiasLaborables(mesInfo) {
 }
 
 function renderTabs() {
-  const botones = MESES.map(
-    (m) => `<button class="month-tab" data-mes="${m.key}">${m.nombre}</button>`
-  ).join("");
-  tabsContainer.innerHTML =
-    botones + `<button class="month-tab month-tab-annual" data-mes="anual">🛸 Bitácora Anual</button>`;
-
+  const botones = MESES.map((m) => `<button class="month-tab" data-mes="${m.key}">${m.nombre}</button>`).join("");
+  tabsContainer.innerHTML = botones + `<button class="month-tab month-tab-annual" data-mes="anual">🛸 Bitácora Anual</button>`;
   if (!mesActivo) mesActivo = MESES[0].key;
   actualizarTabActiva();
-
   tabsContainer.querySelectorAll(".month-tab").forEach((btn) => {
     btn.addEventListener("click", () => {
       mesActivo = btn.dataset.mes;
@@ -163,54 +151,32 @@ function renderGridMes() {
     return;
   }
 
-  const headerDias = dias
-    .map((d) => `<th class="att-day-col">${d.label}<br/><span class="att-day-num">${d.numero}</span></th>`)
-    .join("");
+  const headerDias = dias.map((d) => `<th class="att-day-col">${d.label}<br/><span class="att-day-num">${d.numero}</span></th>`).join("");
 
-  const filas = cacheEstudiantes
-    .map((est) => {
-      const totales = calcularTotalesMes(est.id, mesKeyCompleto);
-      const docActual = cacheAsistencia[`${est.id}_${mesKeyCompleto}`]?.dias || {};
-
-      const celdas = dias
-        .map((d) => {
-          const valor = docActual[d.fechaISO] || "";
-          const opciones = [`<option value="">–</option>`]
-            .concat(CODIGOS.map((c) => `<option value="${c}" ${c === valor ? "selected" : ""}>${c}</option>`))
-            .join("");
-          return `<td>
-            <select class="att-cell att-cell-${valor || "vacia"}" data-estudiante="${est.id}" data-fecha="${d.fechaISO}">
-              ${opciones}
-            </select>
-          </td>`;
-        })
-        .join("");
-
-      return `
-        <tr>
-          <td class="att-name-col">${escapeHtml(est.nombreCompleto)}</td>
-          ${celdas}
-          <td class="att-total att-total-presente">${totales.presente}</td>
-          <td class="att-total att-total-ausente">${totales.ausente}</td>
-          <td class="att-total att-total-tardanza">${totales.tardanza}</td>
-          <td class="att-total att-total-justificada">${totales.justificada}</td>
-        </tr>
-      `;
-    })
-    .join("");
+  const filas = cacheEstudiantes.map((est) => {
+    const totales = calcularTotalesMes(est.id, mesKeyCompleto);
+    const docActual = cacheAsistencia[`${est.id}_${mesKeyCompleto}`]?.dias || {};
+    const celdas = dias.map((d) => {
+      const valor = docActual[d.fechaISO] || "";
+      const opciones = [`<option value="">–</option>`]
+        .concat(CODIGOS.map((c) => `<option value="${c}" ${c === valor ? "selected" : ""}>${c}</option>`)).join("");
+      return `<td><select class="att-cell att-cell-${valor || "vacia"}" data-estudiante="${est.id}" data-fecha="${d.fechaISO}">${opciones}</select></td>`;
+    }).join("");
+    return `
+      <tr>
+        <td class="att-name-col">${escapeHtml(est.nombreCompleto)}</td>
+        ${celdas}
+        <td class="att-total att-total-presente">${totales.presente}</td>
+        <td class="att-total att-total-ausente">${totales.ausente}</td>
+        <td class="att-total att-total-tardanza">${totales.tardanza}</td>
+        <td class="att-total att-total-justificada">${totales.justificada}</td>
+      </tr>
+    `;
+  }).join("");
 
   gridWrap.innerHTML = `
     <table class="attendance-table">
-      <thead>
-        <tr>
-          <th class="att-name-col">Tripulante</th>
-          ${headerDias}
-          <th class="att-total-header">Presente</th>
-          <th class="att-total-header">Ausente</th>
-          <th class="att-total-header">Tardanza</th>
-          <th class="att-total-header">Justif.</th>
-        </tr>
-      </thead>
+      <thead><tr><th class="att-name-col">Tripulante</th>${headerDias}<th class="att-total-header">Presente</th><th class="att-total-header">Ausente</th><th class="att-total-header">Tardanza</th><th class="att-total-header">Justif.</th></tr></thead>
       <tbody>${filas}</tbody>
     </table>
   `;
@@ -220,9 +186,7 @@ function renderGridMes() {
       const estudianteId = select.dataset.estudiante;
       const fechaISO = select.dataset.fecha;
       const codigo = select.value;
-
       select.className = `att-cell att-cell-${codigo || "vacia"}`;
-
       if (CODIGOS_GRUPALES.includes(codigo)) {
         const todosLosIds = cacheEstudiantes.map((e) => e.id);
         await marcarCodigoGrupal(mesKeyCompleto, fechaISO, todosLosIds, codigo);
@@ -239,41 +203,28 @@ function renderBitacoraAnual() {
     vistaAnual.innerHTML = `<p class="text-slate-500 text-sm p-4">Añade estudiantes en "Lista de Estudiantes" primero.</p>`;
     return;
   }
-
-  const filas = cacheEstudiantes
-    .map((est) => {
-      const acumulado = { presente: 0, ausente: 0, tardanza: 0, justificada: 0 };
-      MESES.forEach((m) => {
-        const mesKeyCompleto = `${anoEscolarInicio + m.anoOffset}-${m.key}`;
-        const t = calcularTotalesMes(est.id, mesKeyCompleto);
-        acumulado.presente += t.presente;
-        acumulado.ausente += t.ausente;
-        acumulado.tardanza += t.tardanza;
-        acumulado.justificada += t.justificada;
-      });
-      return `
-        <tr>
-          <td class="att-name-col">${escapeHtml(est.nombreCompleto)}</td>
-          <td class="att-total att-total-presente">${acumulado.presente}</td>
-          <td class="att-total att-total-ausente">${acumulado.ausente}</td>
-          <td class="att-total att-total-tardanza">${acumulado.tardanza}</td>
-          <td class="att-total att-total-justificada">${acumulado.justificada}</td>
-        </tr>
-      `;
-    })
-    .join("");
+  const filas = cacheEstudiantes.map((est) => {
+    const acumulado = { presente: 0, ausente: 0, tardanza: 0, justificada: 0 };
+    MESES.forEach((m) => {
+      const mesKeyCompleto = `${anoEscolarInicio + m.anoOffset}-${m.key}`;
+      const t = calcularTotalesMes(est.id, mesKeyCompleto);
+      acumulado.presente += t.presente; acumulado.ausente += t.ausente;
+      acumulado.tardanza += t.tardanza; acumulado.justificada += t.justificada;
+    });
+    return `
+      <tr>
+        <td class="att-name-col">${escapeHtml(est.nombreCompleto)}</td>
+        <td class="att-total att-total-presente">${acumulado.presente}</td>
+        <td class="att-total att-total-ausente">${acumulado.ausente}</td>
+        <td class="att-total att-total-tardanza">${acumulado.tardanza}</td>
+        <td class="att-total att-total-justificada">${acumulado.justificada}</td>
+      </tr>
+    `;
+  }).join("");
 
   vistaAnual.innerHTML = `
     <table class="attendance-table">
-      <thead>
-        <tr>
-          <th class="att-name-col">Tripulante</th>
-          <th class="att-total-header">Presencias<br/>Anuales</th>
-          <th class="att-total-header">Ausencias<br/>Anuales</th>
-          <th class="att-total-header">Tardanzas<br/>Anuales</th>
-          <th class="att-total-header">Justif.<br/>Anuales</th>
-        </tr>
-      </thead>
+      <thead><tr><th class="att-name-col">Tripulante</th><th class="att-total-header">Presencias<br/>Anuales</th><th class="att-total-header">Ausencias<br/>Anuales</th><th class="att-total-header">Tardanzas<br/>Anuales</th><th class="att-total-header">Justif.<br/>Anuales</th></tr></thead>
       <tbody>${filas}</tbody>
     </table>
   `;
@@ -284,12 +235,7 @@ function escapeHtml(str) {
 }
 
 document.getElementById("btn-respaldo-json").addEventListener("click", () => {
-  const payload = {
-    generadoEn: new Date().toISOString(),
-    anoEscolarInicio,
-    estudiantes: cacheEstudiantes,
-    asistencia: cacheAsistencia
-  };
+  const payload = { generadoEn: new Date().toISOString(), anoEscolarInicio, estudiantes: cacheEstudiantes, asistencia: cacheAsistencia };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -306,8 +252,6 @@ escucharAsistencia((datos) => {
   renderVistaActiva();
 });
 
-// Como Fase 2 solo expone la función ya resuelta (no un listener),
-// refrescamos el caché de estudiantes cada vez que se entra a esta sección.
 export function refrescarEstudiantesAsistencia() {
   cacheEstudiantes = obtenerListaTripulacion();
   renderVistaActiva();

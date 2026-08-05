@@ -9,7 +9,6 @@ import {
 import { obtenerListaTripulacion } from "./estudiantes-data.js";
 import { agregarPerfil, escucharPerfiles } from "./perfiles-data.js";
 
-// ---------- Referencias DOM ----------
 const btnActivarKiosco = document.getElementById("btn-activar-kiosco");
 const kioskOverlay = document.getElementById("kiosk-overlay");
 const kioskFormView = document.getElementById("kiosk-form-view");
@@ -65,9 +64,6 @@ document.getElementById("salir-kiosco-confirm-btn").addEventListener("click", as
     return;
   }
   try {
-    // Reautenticar contra Firebase Auth en vez de comparar contra una
-    // clave guardada en el código — así ninguna contraseña ni PIN
-    // queda expuesto en el HTML/JS que cualquiera puede leer.
     const cred = EmailAuthProvider.credential(auth.currentUser.email, password);
     await reauthenticateWithCredential(auth.currentUser, cred);
     modalSalir.classList.add("hidden");
@@ -80,15 +76,13 @@ document.getElementById("salir-kiosco-confirm-btn").addEventListener("click", as
 });
 
 // ============================================================
-// 2. POBLAR SELECTOR DE ESTUDIANTES (reutiliza Fase 2)
+// 2. POBLAR SELECTOR DE ESTUDIANTES
 // ============================================================
 function poblarSelectorEstudiantes() {
   const lista = obtenerListaTripulacion();
   selectEstudiante.innerHTML =
     '<option value="" disabled selected>Selecciona el nombre...</option>' +
-    lista
-      .map((e) => `<option value="${e.id}">${escapeHtml(e.nombreCompleto)}</option>`)
-      .join("");
+    lista.map((e) => `<option value="${e.id}">${escapeHtml(e.nombreCompleto)}</option>`).join("");
 }
 
 function escapeHtml(str) {
@@ -96,7 +90,7 @@ function escapeHtml(str) {
 }
 
 // ============================================================
-// 3. CAMPOS CONDICIONALES — Educación Especial → Terapias
+// 3. CAMPOS CONDICIONALES
 // ============================================================
 document.querySelectorAll('input[name="educ-especial"]').forEach((radio) => {
   radio.addEventListener("change", () => {
@@ -107,7 +101,7 @@ document.querySelectorAll('input[name="educ-especial"]').forEach((radio) => {
 });
 
 // ============================================================
-// 4. FIRMA DIGITAL (canvas táctil, funciona con dedo o mouse)
+// 4. FIRMA DIGITAL
 // ============================================================
 const canvas = document.getElementById("firma-canvas");
 const ctx = canvas.getContext("2d");
@@ -133,7 +127,6 @@ function posicionEvento(e) {
   const punto = e.touches ? e.touches[0] : e;
   return { x: punto.clientX - rect.left, y: punto.clientY - rect.top };
 }
-
 function empezarTrazo(e) {
   firmando = true;
   firmaVacia = false;
@@ -149,9 +142,7 @@ function trazar(e) {
   ctx.stroke();
   e.preventDefault();
 }
-function terminarTrazo() {
-  firmando = false;
-}
+function terminarTrazo() { firmando = false; }
 
 canvas.addEventListener("mousedown", empezarTrazo);
 canvas.addEventListener("mousemove", trazar);
@@ -170,7 +161,7 @@ function fechaFirmaHoy() {
 }
 
 // ============================================================
-// 5. RESET DEL FORMULARIO (al abrir kiosco y tras cada envío)
+// 5. RESET DEL FORMULARIO
 // ============================================================
 function resetFormularioFicha() {
   form.reset();
@@ -182,14 +173,8 @@ function resetFormularioFicha() {
   clearFormError();
 }
 
-function showFormError(msg) {
-  formError.textContent = msg;
-  formError.classList.remove("hidden");
-}
-function clearFormError() {
-  formError.textContent = "";
-  formError.classList.add("hidden");
-}
+function showFormError(msg) { formError.textContent = msg; formError.classList.remove("hidden"); }
+function clearFormError() { formError.textContent = ""; formError.classList.add("hidden"); }
 
 // ============================================================
 // 6. ENVÍO DEL FORMULARIO → Firestore
@@ -207,9 +192,7 @@ form.addEventListener("submit", async (e) => {
     return;
   }
 
-  const terapias = Array.from(
-    document.querySelectorAll('input[name="terapia"]:checked')
-  ).map((el) => el.value);
+  const terapias = Array.from(document.querySelectorAll('input[name="terapia"]:checked')).map((el) => el.value);
 
   const datos = {
     estudianteId: selectEstudiante.value,
@@ -225,16 +208,12 @@ form.addEventListener("submit", async (e) => {
       telefono: val("est-telefono")
     },
     madre: {
-      nombre: val("madre-nombre"),
-      ocupacion: val("madre-ocupacion"),
-      trabajo: val("madre-trabajo"),
-      telTrabajo: val("madre-tel-trabajo")
+      nombre: val("madre-nombre"), ocupacion: val("madre-ocupacion"),
+      trabajo: val("madre-trabajo"), telTrabajo: val("madre-tel-trabajo")
     },
     padre: {
-      nombre: val("padre-nombre"),
-      ocupacion: val("padre-ocupacion"),
-      trabajo: val("padre-trabajo"),
-      telTrabajo: val("padre-tel-trabajo")
+      nombre: val("padre-nombre"), ocupacion: val("padre-ocupacion"),
+      trabajo: val("padre-trabajo"), telTrabajo: val("padre-tel-trabajo")
     },
     viveCon: radioValue("vive-con"),
     tieneComputadora: radioValue("tiene-computadora"),
@@ -243,22 +222,23 @@ form.addEventListener("submit", async (e) => {
     repitioAntes: radioValue("repitio-antes"),
     educacionEspecial: radioValue("educ-especial"),
     terapias,
+    consentimientoFotos: radioValue("consiente-fotos"),
+    consentimientoDivulgacionNotas: radioValue("consiente-notas"),
     salud: {
       enfermedad: val("salud-enfermedad"),
       usaMedicamentos: radioValue("usa-medicamentos"),
       noAutorizados: val("salud-no-autorizados")
     },
     emergencia: {
-      nombre: val("emerg-nombre"),
-      parentesco: val("emerg-parentesco"),
-      telefono: val("emerg-telefono")
+      nombre: val("emerg-nombre"), parentesco: val("emerg-parentesco"), telefono: val("emerg-telefono")
     },
     autorizacion: {
       encargado: val("autoriza-encargado"),
       contacto: val("autoriza-contacto"),
       firmaBase64: canvas.toDataURL("image/png"),
       fecha: fechaFirmaHoy()
-    }
+    },
+    origen: "kiosco-salon"
   };
 
   setSubmitLoading(true);
@@ -273,12 +253,8 @@ form.addEventListener("submit", async (e) => {
   }
 });
 
-function val(id) {
-  return document.getElementById(id).value.trim();
-}
-function radioValue(name) {
-  return document.querySelector(`input[name="${name}"]:checked`)?.value || "";
-}
+function val(id) { return document.getElementById(id).value.trim(); }
+function radioValue(name) { return document.querySelector(`input[name="${name}"]:checked`)?.value || ""; }
 
 function setSubmitLoading(isLoading) {
   submitBtn.disabled = isLoading;
@@ -311,9 +287,7 @@ escucharPerfiles((perfiles) => {
   perfilesEmptyState.classList.add("hidden");
   perfilesTableBody.innerHTML = perfiles
     .map((p) => {
-      const fecha = p.enviadoEn?.toDate
-        ? p.enviadoEn.toDate().toLocaleDateString("es-PR")
-        : "—";
+      const fecha = p.enviadoEn?.toDate ? p.enviadoEn.toDate().toLocaleDateString("es-PR") : "—";
       const estadoClase = p.estado === "pendiente" ? "estado-pendiente" : "estado-aprobado";
       const origen = p.origen === "formulario-publico" ? "Enlace público" : "Kiosco del salón";
       return `
@@ -361,6 +335,9 @@ function abrirVerPerfil(p) {
     ${campo("Vive con", p.viveCon)} ${campo("Computadora en el hogar", p.tieneComputadora)} ${campo("Internet", p.tieneInternet)}
     ${campo("Repite grado", p.repiteGrado)} ${campo("Repitió antes", p.repitioAntes)} ${campo("Educación especial", p.educacionEspecial)}
     ${p.terapias?.length ? campo("Terapias", p.terapias.join(", ")) : ""}
+    <h5 class="font-display text-slate-200 mt-4 mb-2">Consentimientos</h5>
+    ${campo("Autoriza fotos", p.consentimientoFotos)}
+    ${campo("Autoriza divulgación de notas (BigDreamers)", p.consentimientoDivulgacionNotas)}
     <h5 class="font-display text-slate-200 mt-4 mb-2">Salud y Emergencia</h5>
     ${campo("Enfermedad", p.salud?.enfermedad)} ${campo("Usa medicamentos", p.salud?.usaMedicamentos)}
     ${campo("Contacto de emergencia", `${p.emergencia?.nombre || ""} (${p.emergencia?.parentesco || ""}) — ${p.emergencia?.telefono || ""}`)}
@@ -398,6 +375,11 @@ function imprimirFichaPerfil(p) {
         Repite grado: ${escapeHtml(p.repiteGrado)} &nbsp;·&nbsp; Repitió antes: ${escapeHtml(p.repitioAntes)} &nbsp;·&nbsp; Ed. Especial: ${escapeHtml(p.educacionEspecial)}
         ${p.terapias?.length ? `<br/>Terapias: ${escapeHtml(p.terapias.join(", "))}` : ""}
       </div>
+      <div class="print-section-title">CONSENTIMIENTOS</div>
+      <div class="print-box">
+        <strong>Autoriza fotos:</strong> ${escapeHtml(p.consentimientoFotos) || "—"} &nbsp;·&nbsp;
+        <strong>Autoriza divulgación de notas (BigDreamers):</strong> ${escapeHtml(p.consentimientoDivulgacionNotas) || "—"}
+      </div>
       <div class="print-section-title">SALUD Y EMERGENCIA</div>
       <div class="print-box">
         <strong>Enfermedad:</strong> ${escapeHtml(p.salud?.enfermedad) || "Ninguna"} &nbsp;·&nbsp; <strong>Medicamentos:</strong> ${escapeHtml(p.salud?.usaMedicamentos)}<br/>
@@ -420,9 +402,6 @@ document.getElementById("btn-descargar-excel-perfiles").addEventListener("click"
     return;
   }
 
-  // La firma (imagen Base64) se excluye del Excel a propósito — una
-  // hoja de cálculo no es el formato para verla; para eso está
-  // "Ver/Imprimir" en cada fila, que sí la incluye.
   const filas = cachePerfilesAdmin.map((p) => {
     const est = p.estudiante || {};
     return {
@@ -450,6 +429,8 @@ document.getElementById("btn-descargar-excel-perfiles").addEventListener("click"
       "Repitió antes": p.repitioAntes || "",
       "Educación especial": p.educacionEspecial || "",
       Terapias: (p.terapias || []).join(", "),
+      "Autoriza fotos": p.consentimientoFotos || "",
+      "Autoriza divulgación notas (BigDreamers)": p.consentimientoDivulgacionNotas || "",
       Enfermedad: p.salud?.enfermedad || "",
       "Usa medicamentos": p.salud?.usaMedicamentos || "",
       "Contacto emergencia - Nombre": p.emergencia?.nombre || "",
