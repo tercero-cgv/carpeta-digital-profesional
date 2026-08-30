@@ -45,12 +45,14 @@ export async function crearInstrumento({ materia, tipo, tema, fecha, semana }) {
 }
 
 /**
- * Edita los datos generales de un instrumento ya creado (tipo, tema,
- * fecha, semana). No toca partes ni puntuaciones.
+ * Edita los datos generales de un instrumento ya creado — incluida la
+ * materia, para poder reasignarlo si se guardó bajo la materia
+ * equivocada, sin tener que borrarlo y perder las puntuaciones ya
+ * entradas.
  */
-export async function editarInstrumento(instrumentoId, { tipo, tema, fecha, semana }) {
+export async function editarInstrumento(instrumentoId, { materia, tipo, tema, fecha, semana }) {
   const ref = doc(db, "instrumentos", instrumentoId);
-  return updateDoc(ref, { tipo, tema, fecha, semana });
+  return updateDoc(ref, { materia, tipo, tema, fecha, semana });
 }
 
 export async function agregarParte(instrumentoId, nombre, puntosPosibles) {

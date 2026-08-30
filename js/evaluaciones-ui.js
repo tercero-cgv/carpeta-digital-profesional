@@ -103,6 +103,7 @@ function abrirModalInstrumento(instExistente) {
     instrumentoEditandoId = instExistente.id;
     modalInstrumentoTitle.textContent = "Editar Instrumento";
     instrumentoSubmitBtn.textContent = "Guardar Cambios";
+    document.getElementById("inst-materia").value = instExistente.materia;
     document.getElementById("inst-tipo").value = instExistente.tipo;
     document.getElementById("inst-tema").value = instExistente.tema;
     document.getElementById("inst-fecha").value = instExistente.fecha;
@@ -112,6 +113,7 @@ function abrirModalInstrumento(instExistente) {
     instrumentoEditandoId = null;
     modalInstrumentoTitle.textContent = "Nuevo Instrumento";
     instrumentoSubmitBtn.textContent = "Crear Instrumento";
+    document.getElementById("inst-materia").value = materiaActiva;
   }
 
   modalInstrumento.classList.remove("hidden");
@@ -123,6 +125,7 @@ document.getElementById("modal-instrumento-cancel-btn").addEventListener("click"
 
 formInstrumento.addEventListener("submit", async (e) => {
   e.preventDefault();
+  const materiaSeleccionada = document.getElementById("inst-materia").value;
   const tipo = document.getElementById("inst-tipo").value;
   const tema = document.getElementById("inst-tema").value.trim();
   const fecha = document.getElementById("inst-fecha").value;
@@ -135,10 +138,16 @@ formInstrumento.addEventListener("submit", async (e) => {
   }
 
   if (instrumentoEditandoId) {
-    await editarInstrumento(instrumentoEditandoId, { tipo, tema, fecha, semana });
+    await editarInstrumento(instrumentoEditandoId, { materia: materiaSeleccionada, tipo, tema, fecha, semana });
     modalInstrumento.classList.add("hidden");
+    // Si se reasignó a otra materia, cambia la pestaña activa a esa
+    // materia para que el instrumento aparezca de inmediato donde se ve.
+    if (materiaSeleccionada !== materiaActiva) {
+      materiaActiva = materiaSeleccionada;
+      tabsMateria.querySelectorAll(".month-tab").forEach((b) => b.classList.toggle("month-tab-active", b.dataset.materia === materiaActiva));
+    }
   } else {
-    const ref = await crearInstrumento({ materia: materiaActiva, tipo, tema, fecha, semana });
+    const ref = await crearInstrumento({ materia: materiaSeleccionada, tipo, tema, fecha, semana });
     modalInstrumento.classList.add("hidden");
     instrumentoAbiertoId = ref.id;
   }
