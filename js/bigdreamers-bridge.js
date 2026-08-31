@@ -56,12 +56,6 @@ export async function resolverBigDreamersId(estudianteRollBook, rosterBigDreamer
   if (estudianteRollBook.bigdreamersId) return estudianteRollBook.bigdreamersId;
   const nombreRB = normalizarNombre(estudianteRollBook.nombreCompleto);
   const match = rosterBigDreamers.find((s) => normalizarNombre(s.nombre) === nombreRB);
-
-  // 🔧 DIAGNÓSTICO TEMPORAL — quitar una vez resuelto el emparejamiento.
-  console.log("[BD-DEBUG] Roll Book:", estudianteRollBook.nombreCompleto, "→ normalizado:", nombreRB);
-  console.log("[BD-DEBUG] Roster BigDreamers (primeros 3):", rosterBigDreamers.slice(0, 3));
-  console.log("[BD-DEBUG] ¿Coincidencia encontrada?", match || "NINGUNA");
-
   if (!match) return null;
   await updateDoc(rbDoc(rollBookDb, "estudiantes", estudianteRollBook.id), { bigdreamersId: match.id });
   return match.id;
@@ -86,19 +80,12 @@ export async function enviarAInstrumentoExistenteBigDreamers({
     ? { instrumentos: materiaSnap.data().instrumentos || [], puntuaciones: materiaSnap.data().puntuaciones || {} }
     : { instrumentos: [], puntuaciones: {} };
 
-  // 🔧 DIAGNÓSTICO TEMPORAL
-  console.log("[BD-DEBUG] ids en puntuacionesPorEstudianteId:", Object.keys(puntuacionesPorEstudianteId));
-  console.log("[BD-DEBUG] ids en estudiantesRollBook:", estudiantesRollBook.map((e) => e.id));
-
   let enviados = 0;
   const sinCoincidencia = [];
 
   for (const [estudianteId, puntos] of Object.entries(puntuacionesPorEstudianteId)) {
     const estudiante = estudiantesRollBook.find((e) => e.id === estudianteId);
-    if (!estudiante) {
-      console.log("[BD-DEBUG] ⚠️ No se encontró estudiante en estudiantesRollBook para id:", estudianteId);
-      continue;
-    }
+    if (!estudiante) continue;
     const bdId = await resolverBigDreamersId(estudiante, rosterBigDreamers);
     if (!bdId) { sinCoincidencia.push(estudiante.nombreCompleto); continue; }
     if (!materiaData.puntuaciones[bdId]) materiaData.puntuaciones[bdId] = {};
@@ -129,19 +116,12 @@ export async function enviarInstrumentoNuevoABigDreamers({
   const instId = `rollbook-${Date.now()}`;
   materiaData.instrumentos.push({ id: instId, tipo, tema, fecha, valor: valorTotal });
 
-  // 🔧 DIAGNÓSTICO TEMPORAL
-  console.log("[BD-DEBUG] ids en puntuacionesPorEstudianteId:", Object.keys(puntuacionesPorEstudianteId));
-  console.log("[BD-DEBUG] ids en estudiantesRollBook:", estudiantesRollBook.map((e) => e.id));
-
   let enviados = 0;
   const sinCoincidencia = [];
 
   for (const [estudianteId, puntos] of Object.entries(puntuacionesPorEstudianteId)) {
     const estudiante = estudiantesRollBook.find((e) => e.id === estudianteId);
-    if (!estudiante) {
-      console.log("[BD-DEBUG] ⚠️ No se encontró estudiante en estudiantesRollBook para id:", estudianteId);
-      continue;
-    }
+    if (!estudiante) continue;
     const bdId = await resolverBigDreamersId(estudiante, rosterBigDreamers);
     if (!bdId) { sinCoincidencia.push(estudiante.nombreCompleto); continue; }
     if (!materiaData.puntuaciones[bdId]) materiaData.puntuaciones[bdId] = {};
