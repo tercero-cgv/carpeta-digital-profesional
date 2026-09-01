@@ -136,16 +136,6 @@ export async function enviarInstrumentoNuevoABigDreamers({
     enviados++;
   }
 
-  // 🔧 DIAGNÓSTICO TEMPORAL
-  console.log("[BD-DEBUG] Ruta del documento:", materiaDocRef.path);
-  console.log("[BD-DEBUG] nuevoInstrumento a enviar:", nuevoInstrumento);
-  console.log("[BD-DEBUG] camposAActualizar completo:", camposAActualizar);
-  try {
-    await updateDoc(materiaDocRef, camposAActualizar);
-    console.log("[BD-DEBUG] ✅ updateDoc terminó SIN lanzar error.");
-  } catch (err) {
-    console.error("[BD-DEBUG] ❌ updateDoc lanzó un error:", err.code, err.message, err);
-    throw err;
-  }
+  await updateDoc(materiaDocRef, camposAActualizar);
   return { enviados, sinCoincidencia };
 }
