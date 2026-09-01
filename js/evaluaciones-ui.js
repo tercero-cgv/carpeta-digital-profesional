@@ -12,7 +12,7 @@ import {
   eliminarParte,
   marcarPuntuacion
 } from "./evaluaciones-data.js";
-import { enviarInstrumentoNuevoABigDreamers, enviarAInstrumentoExistenteBigDreamers, obtenerInstrumentosBigDreamers } from "./bigdreamers-bridge.js";
+import { enviarInstrumentoNuevoABigDreamers, enviarAInstrumentoExistenteBigDreamers, obtenerInstrumentosBigDreamers } from "./bigdreamers-bridge.js?v=2";
 
 const TIPO_A_BIGDREAMERS = {
   Dictado: "Otro", Proyecto: "Otro", Assessment: "Assessment", Examen: "Otro", STEM: "Otro",
