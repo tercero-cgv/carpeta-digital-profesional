@@ -336,6 +336,10 @@ function abrirModalBD(inst) {
   });
 
   document.getElementById("modal-bd-confirm-btn").onclick = async () => {
+    const confirmBtn = document.getElementById("modal-bd-confirm-btn");
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = "Enviando...";
+
     const puntuaciones = {};
     cacheEstudiantes.forEach((est) => { const { total } = calcularTotal(inst, est.id); puntuaciones[est.id] = total; });
     const modo = document.querySelector('input[name="bd-modo"]:checked').value;
@@ -348,6 +352,8 @@ function abrirModalBD(inst) {
         if (!instrumentoIdBD) {
           bdError.textContent = "Selecciona a cuál instrumento existente agregar las notas.";
           bdError.classList.remove("hidden");
+          confirmBtn.disabled = false;
+          confirmBtn.textContent = "⭐ Enviar";
           return;
         }
         resultado = await enviarAInstrumentoExistenteBigDreamers({
@@ -371,6 +377,9 @@ function abrirModalBD(inst) {
     } catch (err) {
       bdError.textContent = "Error al enviar: " + err.message;
       bdError.classList.remove("hidden");
+    } finally {
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = "⭐ Enviar";
     }
   };
 }

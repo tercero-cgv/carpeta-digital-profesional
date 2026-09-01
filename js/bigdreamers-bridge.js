@@ -1,15 +1,28 @@
 // ============================================================
 // BIGDREAMERS BRIDGE — Segunda conexión de Firebase (proyecto
 // separado) para escribir/leer notas en BigDreamers.
+//
+// IMPORTANTE — por qué esto usa updateDoc con arrayUnion y notación
+// de punto, en vez de leer el documento y volver a escribirlo
+// completo con setDoc: un patrón "leer → modificar → escribir todo"
+// no es atómico. Si dos envíos se solapan (ej. un doble clic, o dos
+// pestañas enviando a la vez), el segundo puede sobrescribir por
+// completo lo que el primero acababa de guardar, perdiendo datos
+// silenciosamente — eso fue exactamente lo que pasó con
+// "instrumentos: []" quedando vacío mientras "puntuaciones" sí tenía
+// datos. Escribir solo los campos que cambian evita esa clase de bug
+// por completo, sin importar el orden en que terminen los envíos.
 // ============================================================
 import { db as rollBookDb } from "./firebase-config.js";
-import { doc as rbDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { doc as rbDoc, updateDoc as rbUpdateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getFirestore,
   doc,
   getDoc,
-  setDoc
+  setDoc,
+  updateDoc,
+  arrayUnion
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const BD_FB_CONFIG = {
@@ -29,16 +42,6 @@ export async function obtenerRosterBigDreamers() {
   return snap.exists() ? snap.data().lista || [] : [];
 }
 
-/**
- * Normaliza un nombre para comparar sin que importen: mayúsculas,
- * acentos, comas, ni el ORDEN de las palabras. Esto es necesario
- * porque BigDreamers guarda "Apellidos, Nombre" (ej. "Feliciano
- * Matos, Lea") mientras Roll Book arma "Nombre Apellidos" (ej. "Lea
- * Feliciano Matos") — una comparación de texto exacto nunca
- * encontraría coincidencia entre ambos formatos aunque sea la misma
- * persona. Separar en palabras y ordenarlas alfabéticamente hace que
- * el orden deje de importar.
- */
 function normalizarNombre(str) {
   return (str || "")
     .toString()
@@ -57,7 +60,7 @@ export async function resolverBigDreamersId(estudianteRollBook, rosterBigDreamer
   const nombreRB = normalizarNombre(estudianteRollBook.nombreCompleto);
   const match = rosterBigDreamers.find((s) => normalizarNombre(s.nombre) === nombreRB);
   if (!match) return null;
-  await updateDoc(rbDoc(rollBookDb, "estudiantes", estudianteRollBook.id), { bigdreamersId: match.id });
+  await rbUpdateDoc(rbDoc(rollBookDb, "estudiantes", estudianteRollBook.id), { bigdreamersId: match.id });
   return match.id;
 }
 
@@ -65,6 +68,14 @@ export async function obtenerInstrumentosBigDreamers(materiaBD) {
   const materiaDocRef = doc(bdDb, "bigdreamers", `materia_${materiaBD}`);
   const snap = await getDoc(materiaDocRef);
   return snap.exists() ? snap.data().instrumentos || [] : [];
+}
+
+/** Crea el documento de la materia si todavía no existe, sin tocar nada si ya existe. */
+async function asegurarDocumentoMateria(materiaDocRef) {
+  const snap = await getDoc(materiaDocRef);
+  if (!snap.exists()) {
+    await setDoc(materiaDocRef, { instrumentos: [], puntuaciones: {} });
+  }
 }
 
 export async function enviarAInstrumentoExistenteBigDreamers({
@@ -75,25 +86,24 @@ export async function enviarAInstrumentoExistenteBigDreamers({
 }) {
   const rosterBigDreamers = await obtenerRosterBigDreamers();
   const materiaDocRef = doc(bdDb, "bigdreamers", `materia_${materiaBD}`);
-  const materiaSnap = await getDoc(materiaDocRef);
-  const materiaData = materiaSnap.exists()
-    ? { instrumentos: materiaSnap.data().instrumentos || [], puntuaciones: materiaSnap.data().puntuaciones || {} }
-    : { instrumentos: [], puntuaciones: {} };
+  await asegurarDocumentoMateria(materiaDocRef);
 
   let enviados = 0;
   const sinCoincidencia = [];
+  const camposAActualizar = {};
 
   for (const [estudianteId, puntos] of Object.entries(puntuacionesPorEstudianteId)) {
     const estudiante = estudiantesRollBook.find((e) => e.id === estudianteId);
     if (!estudiante) continue;
     const bdId = await resolverBigDreamersId(estudiante, rosterBigDreamers);
     if (!bdId) { sinCoincidencia.push(estudiante.nombreCompleto); continue; }
-    if (!materiaData.puntuaciones[bdId]) materiaData.puntuaciones[bdId] = {};
-    materiaData.puntuaciones[bdId][instrumentoIdBD] = puntos;
+    camposAActualizar[`puntuaciones.${bdId}.${instrumentoIdBD}`] = puntos;
     enviados++;
   }
 
-  await setDoc(materiaDocRef, materiaData);
+  if (Object.keys(camposAActualizar).length > 0) {
+    await updateDoc(materiaDocRef, camposAActualizar);
+  }
   return { enviados, sinCoincidencia };
 }
 
@@ -108,27 +118,24 @@ export async function enviarInstrumentoNuevoABigDreamers({
 }) {
   const rosterBigDreamers = await obtenerRosterBigDreamers();
   const materiaDocRef = doc(bdDb, "bigdreamers", `materia_${materiaBD}`);
-  const materiaSnap = await getDoc(materiaDocRef);
-  const materiaData = materiaSnap.exists()
-    ? { instrumentos: materiaSnap.data().instrumentos || [], puntuaciones: materiaSnap.data().puntuaciones || {} }
-    : { instrumentos: [], puntuaciones: {} };
+  await asegurarDocumentoMateria(materiaDocRef);
 
   const instId = `rollbook-${Date.now()}`;
-  materiaData.instrumentos.push({ id: instId, tipo, tema, fecha, valor: valorTotal });
+  const nuevoInstrumento = { id: instId, tipo, tema, fecha, valor: valorTotal };
 
   let enviados = 0;
   const sinCoincidencia = [];
+  const camposAActualizar = { instrumentos: arrayUnion(nuevoInstrumento) };
 
   for (const [estudianteId, puntos] of Object.entries(puntuacionesPorEstudianteId)) {
     const estudiante = estudiantesRollBook.find((e) => e.id === estudianteId);
     if (!estudiante) continue;
     const bdId = await resolverBigDreamersId(estudiante, rosterBigDreamers);
     if (!bdId) { sinCoincidencia.push(estudiante.nombreCompleto); continue; }
-    if (!materiaData.puntuaciones[bdId]) materiaData.puntuaciones[bdId] = {};
-    materiaData.puntuaciones[bdId][instId] = puntos;
+    camposAActualizar[`puntuaciones.${bdId}.${instId}`] = puntos;
     enviados++;
   }
 
-  await setDoc(materiaDocRef, materiaData);
+  await updateDoc(materiaDocRef, camposAActualizar);
   return { enviados, sinCoincidencia };
 }
